@@ -14,7 +14,6 @@ export const RevivesModule = () => {
     remainingRevives,
     setReviveStock,
     addReviveUsage,
-    updateReviveUsageName,
     toggleReviveUsage,
     removeReviveUsage,
   } = useRevives()
@@ -91,7 +90,6 @@ export const RevivesModule = () => {
               item={item}
               key={item.id}
               onRemove={removeReviveUsage}
-              onRename={updateReviveUsageName}
               onToggle={toggleReviveUsage}
             />
           )
