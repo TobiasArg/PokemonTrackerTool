@@ -15,13 +15,16 @@ export const FallenPokemonCard = ({
     <PokemonDataCard
       className="fallen-card"
       footer={
-        <ActionButton
-          aria-label={`Eliminar registro de ${pokemon.name}`}
-          onClick={() => onRemove(pokemon.id)}
-          variant="danger"
-        >
-          Eliminar registro
-        </ActionButton>
+        <>
+          <span className="pokemon-card__footer-note">Registro de caída</span>
+          <ActionButton
+            aria-label={`Eliminar registro de ${pokemon.name}`}
+            onClick={() => onRemove(pokemon.id)}
+            variant="danger"
+          >
+            Eliminar registro
+          </ActionButton>
+        </>
       }
       metadata={
         <>

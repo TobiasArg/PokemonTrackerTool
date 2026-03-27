@@ -5,16 +5,25 @@ type PanelProps = {
   title: string
   description?: string
   className?: string
+  hideHeader?: boolean
   children: ReactNode
 }
 
-export const Panel = ({ title, description, className, children }: PanelProps) => {
+export const Panel = ({
+  title,
+  description,
+  className,
+  hideHeader = false,
+  children,
+}: PanelProps) => {
   return (
     <section className={clsx('panel', className)}>
-      <header className="panel__header">
-        <h2 className="panel__title">{title}</h2>
-        {description ? <p className="panel__description">{description}</p> : null}
-      </header>
+      {!hideHeader ? (
+        <header className="panel__header">
+          <h2 className="panel__title">{title}</h2>
+          {description ? <p className="panel__description">{description}</p> : null}
+        </header>
+      ) : null}
       <div className="panel__content">{children}</div>
     </section>
   )

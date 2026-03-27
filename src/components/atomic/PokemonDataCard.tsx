@@ -20,6 +20,13 @@ const formatFallbackName = (value: string): string => {
   return normalized
 }
 
+const getTypeStyle = (color: string): CSSProperties => {
+  return {
+    '--type-color': color,
+    '--type-bg': `${color}2a`,
+  } as CSSProperties
+}
+
 export const PokemonDataCard = ({
   pokemonName,
   stateLabel,
@@ -30,28 +37,36 @@ export const PokemonDataCard = ({
   const { status, data, errorMessage } = usePokemonCardData(pokemonName)
 
   const displayName = data?.displayName ?? formatFallbackName(pokemonName)
-  const statusDescription =
+  const dexId = data ? `Nº ${String(data.id).padStart(3, '0')}` : 'Nº ---'
+  const statusMessage =
     status === 'loading'
-      ? 'Cargando desde PokeAPI...'
+      ? 'Sincronizando datos...'
       : status === 'error'
-        ? 'No se pudo validar este Pokémon.'
+        ? 'Entrada no identificada.'
         : data
-          ? `#${data.id} • ${data.apiName}`
-          : 'Escribe un nombre de Pokémon.'
+          ? null
+          : 'Sin nombre registrado.'
 
   return (
     <article className={clsx('pokemon-card', className)}>
+      <header className="pokemon-card__head">
+        <p className="pokemon-card__dex-id">{dexId}</p>
+        {stateLabel ? (
+          <span className="pokemon-card__state-label">{stateLabel}</span>
+        ) : null}
+      </header>
+
       <div className="pokemon-card__main">
-        <div className="pokemon-card__sprite-wrap">
+        <div className="pokemon-card__art-wrap">
           {status === 'success' && data?.spriteUrl ? (
             <img
-              alt={`Sprite de ${data.displayName}`}
-              className="pokemon-card__sprite"
+              alt={`Splash art de ${data.displayName}`}
+              className="pokemon-card__artwork"
               loading="lazy"
               src={data.spriteUrl}
             />
           ) : (
-            <div className="pokemon-card__sprite-placeholder" role="presentation">
+            <div className="pokemon-card__artwork-placeholder" role="presentation">
               {status === 'loading' ? '...' : '??'}
             </div>
           )}
@@ -59,8 +74,6 @@ export const PokemonDataCard = ({
 
         <div className="pokemon-card__content">
           <h3 className="pokemon-card__name">{displayName}</h3>
-          <p className="pokemon-card__description">{statusDescription}</p>
-
           <div className="pokemon-card__types" role="list">
             {status === 'success' && data?.types.length
               ? data.types.map((type) => {
@@ -69,7 +82,7 @@ export const PokemonDataCard = ({
                       className="pokemon-type-pill"
                       key={type.id}
                       role="listitem"
-                      style={{ '--type-color': type.color } as CSSProperties}
+                      style={getTypeStyle(type.color)}
                     >
                       {type.label}
                     </span>
@@ -81,18 +94,19 @@ export const PokemonDataCard = ({
                   </span>
                 )}
           </div>
-        </div>
 
-        {stateLabel ? (
-          <span className="pokemon-card__state-label">{stateLabel}</span>
-        ) : null}
+          {statusMessage ? (
+            <p className="pokemon-card__status-message">{statusMessage}</p>
+          ) : null}
+
+          {metadata ? <div className="pokemon-card__metadata">{metadata}</div> : null}
+        </div>
       </div>
 
       {status === 'error' && errorMessage ? (
         <p className="pokemon-card__error">{errorMessage}</p>
       ) : null}
 
-      {metadata ? <div className="pokemon-card__metadata">{metadata}</div> : null}
       {footer ? <div className="pokemon-card__footer">{footer}</div> : null}
     </article>
   )

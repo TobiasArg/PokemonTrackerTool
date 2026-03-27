@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { normalizePokemonName as normalizePokemonNameShared } from '../utils/pokemonNormalization'
+
 export type PokemonTypeInfo = {
   id: string
   label: string
@@ -94,20 +96,7 @@ const mapPokemonType = (typeId: string): PokemonTypeInfo => {
   }
 }
 
-export const normalizePokemonName = (value: string): string => {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/♀/g, '-f')
-    .replace(/♂/g, '-m')
-    .replace(/[.'’]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
+export const normalizePokemonName = normalizePokemonNameShared
 
 const buildSpriteUrl = (payload: PokemonApiResponse): string | null => {
   return (

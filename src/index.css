@@ -1,20 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap');
 
 :root {
-  --bg: #f1f5fb;
-  --bg-surface: #ffffff;
-  --bg-soft: #eef3fb;
-  --line: #d5dfed;
-  --text-main: #0f1f38;
-  --text-muted: #576987;
-  --accent: #2276eb;
-  --accent-soft: #dceafe;
-  --danger: #c6454f;
-  --success: #179860;
+  --bg: #121212;
+  --surface: #1b1b1b;
+  --surface-soft: #232323;
+  --surface-soft-2: #2b2b2b;
+  --line: #5a5a5a;
+  --line-soft: #454545;
+  --text-main: #efefef;
+  --text-muted: #b6b6b6;
+  --accent: #d7d7d7;
+  --accent-deep: #9d9d9d;
+  --accent-soft: #333333;
+  --danger: #acacac;
+  --success: #f1f1f1;
 
   color: var(--text-main);
-  font-family: 'Manrope', 'Segoe UI', sans-serif;
-  line-height: 1.5;
+  font-family: 'Share Tech Mono', 'Consolas', monospace;
+  line-height: 1.4;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -34,10 +37,35 @@ body,
 
 body {
   background:
-    radial-gradient(circle at 12% 8%, #ffffff 0%, transparent 34%),
-    radial-gradient(circle at 86% 0%, #dfefff 0%, transparent 31%),
-    var(--bg);
+    radial-gradient(circle at 14% 10%, rgba(215, 215, 215, 0.12), transparent 32%),
+    radial-gradient(circle at 85% 88%, rgba(90, 90, 90, 0.2), transparent 28%),
+    linear-gradient(180deg, #141414 0%, var(--bg) 100%);
   color: var(--text-main);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(235, 235, 235, 0.05) 0,
+      rgba(235, 235, 235, 0.05) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+.app-layout {
+  min-height: 100vh;
 }
 
 button,
@@ -47,140 +75,315 @@ input {
 
 .page-shell {
   margin: 0 auto;
-  max-width: 1140px;
-  padding: 1.3rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.page-header {
-  background: linear-gradient(132deg, #fbfdff 0%, #e9f2ff 100%);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 1.35rem;
-  box-shadow: 0 14px 40px rgba(15, 31, 56, 0.08);
-}
-
-.page-header__eyebrow {
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.page-header__title {
-  margin: 0.35rem 0 0;
-  font-size: clamp(1.7rem, 2.9vw, 2.35rem);
-  line-height: 1.1;
-}
-
-.page-header__description {
-  margin: 0.55rem 0 0;
-  max-width: 66ch;
-  color: var(--text-muted);
-}
-
-.module-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  align-items: start;
-}
-
-.module-grid > * {
-  min-width: 0;
-}
-
-.panel {
-  background: var(--bg-surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 1.1rem;
-  box-shadow: 0 12px 30px rgba(15, 31, 56, 0.06);
-}
-
-.panel__header {
-  margin-bottom: 0.85rem;
-}
-
-.panel__title {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.panel__description {
-  margin: 0.3rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-}
-
-.panel__content {
+  max-width: 560px;
+  padding: 0.85rem 0.75rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
 }
 
-.action-button {
-  border: 0;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 700;
+.page-shell--header {
+  padding-bottom: 0.2rem;
+}
+
+.page-shell--content {
+  padding-top: 0.2rem;
+  padding-bottom: calc(5.4rem + env(safe-area-inset-bottom));
+}
+
+.route-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.route-intro {
+  background: linear-gradient(160deg, #202020 0%, #141414 100%);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px rgba(215, 215, 215, 0.1);
+  padding: 0.65rem 0.68rem;
+}
+
+.route-intro__title {
+  margin: 0;
+  font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.route-intro__description {
+  margin: 0.24rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.mobile-tab-nav {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 1rem));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  background: rgba(16, 16, 16, 0.95);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px rgba(215, 215, 215, 0.09);
+  padding: 0.44rem;
+  padding-bottom: calc(0.44rem + env(safe-area-inset-bottom));
+}
+
+.mobile-tab-nav__item {
   min-height: 42px;
-  padding: 0.58rem 0.9rem;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+  text-decoration: none;
+  color: var(--text-muted);
+  background: #232323;
+  border: 1px solid var(--line-soft);
+  border-radius: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.32rem 0.4rem;
+  transition: transform 0.15s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.mobile-tab-nav__item:hover {
+  transform: translateY(-1px);
+  border-color: var(--line);
+  color: var(--text-main);
+}
+
+.mobile-tab-nav__item--active {
+  border-color: var(--accent-deep);
+  color: var(--accent);
+  background: linear-gradient(180deg, #373737 0%, #292929 100%);
+  box-shadow: inset 0 0 0 1px rgba(215, 215, 215, 0.12);
+}
+
+.mobile-tab-nav__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-header {
+  background: linear-gradient(160deg, #202020 0%, #141414 100%);
+  border: 1px solid var(--line);
+  border-left: 8px solid var(--accent);
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px rgba(215, 215, 215, 0.1);
+  padding: 1rem 0.9rem;
+}
+
+.collapsible-module {
+  border: 1px solid var(--line);
+  background: #1a1a1a;
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px rgba(215, 215, 215, 0.08);
+}
+
+.collapsible-module + .collapsible-module {
+  margin-top: -0.15rem;
+}
+
+.collapsible-module__summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-height: 54px;
+  padding: 0.52rem 0.62rem;
+  background: #222222;
+}
+
+.collapsible-module__summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-module__summary:focus-visible {
+  outline: 2px solid rgba(215, 215, 215, 0.34);
+  outline-offset: 2px;
+}
+
+.collapsible-module__text {
+  min-width: 0;
+}
+
+.collapsible-module__title {
+  margin: 0;
+  font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.collapsible-module__subtitle {
+  margin: 0.14rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  letter-spacing: 0.04em;
+}
+
+.collapsible-module__chevron {
+  font-size: 1.05rem;
+  color: var(--accent);
+  transition: transform 0.2s ease;
+}
+
+.collapsible-module[open] .collapsible-module__chevron {
+  transform: rotate(90deg);
+}
+
+.collapsible-module__content {
+  padding: 0.45rem;
+  border-top: 1px solid var(--line-soft);
+}
+
+.collapsible-module__content .panel {
+  border: 0;
+  border-left: 0;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.page-header__eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.page-header__eyebrow::after {
+  content: ' _';
+  animation: terminal-blink 1s steps(1, end) infinite;
+}
+
+.page-header__title {
+  margin: 0.28rem 0 0;
+  font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+  font-size: clamp(1.5rem, 6.3vw, 2rem);
+  line-height: 1.03;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.page-header__description {
+  margin: 0.42rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.panel {
+  background: linear-gradient(170deg, #1e1e1e 0%, #141414 100%);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent-deep);
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px rgba(215, 215, 215, 0.08);
+  padding: 0.78rem;
+}
+
+.panel__header {
+  margin-bottom: 0.66rem;
+}
+
+.panel__title {
+  margin: 0;
+  font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.panel__description {
+  margin: 0.24rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.panel__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.action-button {
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 0.42rem 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.72rem;
+  transition: transform 0.15s ease, filter 0.2s ease;
 }
 
 .action-button:hover {
   transform: translateY(-1px);
+  filter: brightness(1.06);
 }
 
 .action-button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
   transform: none;
 }
 
-.action-button--primary {
-  background: var(--accent);
-  color: #fff;
-}
-
+.action-button--primary,
 .action-button--secondary {
-  background: #1f935b;
-  color: #fff;
+  background: linear-gradient(180deg, #3f3f3f 0%, #2d2d2d 100%);
+  border-color: var(--accent-deep);
+  color: var(--accent);
 }
 
 .action-button--danger {
-  background: #fbe8ea;
-  color: var(--danger);
+  background: linear-gradient(180deg, #2f2f2f 0%, #202020 100%);
+  border-color: #6c6c6c;
+  color: #d2d2d2;
 }
 
 .action-button--ghost {
-  background: var(--bg-soft);
+  background: linear-gradient(180deg, #282828 0%, #1d1d1d 100%);
+  border-color: var(--line-soft);
   color: var(--text-main);
 }
 
 .text-field {
   display: flex;
   flex-direction: column;
-  gap: 0.38rem;
+  gap: 0.34rem;
 }
 
 .text-field__label {
   color: var(--text-muted);
-  font-size: 0.84rem;
+  font-size: 0.74rem;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .text-field__input {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  min-height: 42px;
-  padding: 0.56rem 0.72rem;
-  background: #fcfdff;
+  border: 1px solid var(--line-soft);
+  border-radius: 1px;
+  min-height: 36px;
+  padding: 0.45rem 0.56rem;
+  background: #141414;
   color: var(--text-main);
 }
 
@@ -189,14 +392,14 @@ input {
 .badge-token:focus-visible,
 .roadmap-check input:focus-visible,
 .check-field__input:focus-visible {
-  outline: 3px solid rgba(34, 118, 235, 0.35);
+  outline: 2px solid rgba(215, 215, 215, 0.34);
   outline-offset: 2px;
 }
 
 .check-field {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.42rem;
 }
 
 .check-field__input {
@@ -207,496 +410,766 @@ input {
 
 .check-field__label {
   color: var(--text-main);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 0.8rem;
 }
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
 }
 
 .metric-card {
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.75rem;
+  background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
+  border: 1px solid var(--line-soft);
+  border-radius: 1px;
+  padding: 0.56rem;
 }
 
 .metric-card__label {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.66rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 .metric-card__value {
-  margin: 0.2rem 0 0;
-  font-size: 1.45rem;
-  font-weight: 800;
-}
-
-.inline-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.6rem;
+  margin: 0.14rem 0 0;
+  color: var(--accent);
+  font-size: 1.22rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .module-toolbar {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.56rem;
+  background: #1f1f1f;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 1px;
+  padding: 0.46rem 0.5rem;
+}
+
+.module-toolbar__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.module-toolbar__kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.module-toolbar__info {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .module-toolbar .action-button {
-  min-width: 128px;
+  min-width: 126px;
+  white-space: nowrap;
 }
 
-.revive-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.chosen-panel .panel__content {
+  gap: 0.9rem;
 }
 
-.revive-row {
-  list-style: none;
+.chosen-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
 }
 
-.revive-row__actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-  width: 100%;
+.chosen-summary__card {
+  min-height: 74px;
 }
 
-.revive-row__actions .check-field {
-  min-width: 0;
-  flex: 1 1 140px;
+.chosen-grid,
+.fallen-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.62rem;
 }
 
-.revive-row__actions .action-button {
-  flex: 0 0 auto;
+.chosen-card {
+  border-left-color: #b3b3b3;
+}
+
+.chosen-card .pokemon-card__state-label {
+  background: #363636;
+  border-color: #9d9d9d;
+  color: #ededed;
 }
 
 .pokemon-card {
-  background: linear-gradient(152deg, #ffffff 0%, #f4f8ff 100%);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(235, 235, 235, 0.05) 0,
+      rgba(235, 235, 235, 0.05) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, #2d2d2d 0 26px, #1e1e1e 26px 100%);
   border: 1px solid var(--line);
-  border-radius: 13px;
-  box-shadow: 0 8px 24px rgba(15, 31, 56, 0.06);
+  border-left: 6px solid var(--accent-deep);
+  border-radius: 1px;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.72rem;
+  gap: 0.55rem;
+  padding: 0.56rem;
+  overflow: hidden;
+}
+
+.pokemon-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pokemon-card__dex-id {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pokemon-card__state-label {
+  white-space: nowrap;
+  background: #373737;
+  color: var(--accent);
+  border: 1px solid var(--accent-deep);
+  border-radius: 1px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.14rem 0.4rem;
 }
 
 .pokemon-card__main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.7rem;
+  display: grid;
+  grid-template-columns: minmax(106px, 38%) minmax(0, 1fr);
+  gap: 0.66rem;
+  align-items: stretch;
 }
 
-.pokemon-card__sprite-wrap {
-  width: 84px;
-  height: 84px;
-  flex: 0 0 84px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: #eef4fe;
+.pokemon-card__art-wrap {
+  min-height: 126px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
+  padding: 0.12rem 0.24rem;
 }
 
-.pokemon-card__sprite {
-  width: 78px;
-  height: 78px;
+.pokemon-card__artwork {
+  width: 100%;
+  max-width: 170px;
+  max-height: 152px;
   object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
 }
 
-.pokemon-card__sprite-placeholder {
-  color: #6e7e97;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+.pokemon-card__artwork-placeholder {
+  color: #b8b8b8;
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
 .pokemon-card__content {
-  flex: 1 1 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
   min-width: 0;
+  justify-content: center;
 }
 
 .pokemon-card__name {
   margin: 0;
-  font-size: 1.02rem;
-  line-height: 1.1;
-}
-
-.pokemon-card__description {
-  margin: 0.18rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
+  font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+  color: var(--accent);
+  font-size: 1.08rem;
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  word-break: break-word;
 }
 
 .pokemon-card__types {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.38rem;
-  margin-top: 0.5rem;
+  gap: 0.36rem;
+  margin-top: 0.05rem;
 }
 
 .pokemon-type-pill {
-  --type-color: #7a91b8;
-  background: color-mix(in srgb, var(--type-color), white 84%);
-  border: 1px solid color-mix(in srgb, var(--type-color), white 70%);
-  border-radius: 999px;
-  color: color-mix(in srgb, var(--type-color), black 24%);
-  font-size: 0.74rem;
-  font-weight: 800;
+  --type-color: #d7d7d7;
+  --type-bg: #3a3a3a;
+  background: linear-gradient(180deg, var(--type-bg) 0%, rgba(20, 20, 20, 0.88) 100%);
+  border: 1px solid var(--type-color);
+  border-radius: 1px;
+  color: var(--type-color);
+  font-size: 0.64rem;
+  font-weight: 700;
   line-height: 1;
-  padding: 0.25rem 0.55rem;
+  padding: 0.21rem 0.38rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .pokemon-type-pill--neutral {
-  background: #eff3f9;
-  border-color: #d6dfeb;
-  color: #5d6f89;
+  color: #d5d5d5;
+  background: #252525;
+  border-color: #525252;
 }
 
-.pokemon-card__state-label {
-  margin-left: auto;
-  white-space: nowrap;
-  align-self: start;
-  background: var(--accent-soft);
-  border-radius: 999px;
-  color: #114d9d;
-  font-size: 0.74rem;
-  font-weight: 800;
+.pokemon-card__status-message {
+  margin: 0.08rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
   letter-spacing: 0.04em;
-  padding: 0.22rem 0.56rem;
+  text-transform: uppercase;
 }
 
 .pokemon-card__error {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   color: var(--danger);
+  font-weight: 700;
 }
 
 .pokemon-card__metadata {
-  border-top: 1px solid var(--line);
+  margin-top: 0.04rem;
+  border-top: 1px dashed var(--line-soft);
   display: flex;
   flex-direction: column;
   gap: 0.22rem;
-  padding-top: 0.52rem;
+  padding-top: 0.36rem;
 }
 
 .pokemon-card__footer {
+  border-top: 1px dashed var(--line-soft);
+  padding-top: 0.44rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.56rem;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+}
+
+.pokemon-card__footer-note {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fallen-card {
+  border-left-color: #7f7f7f;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(200, 200, 200, 0.05) 0,
+      rgba(200, 200, 200, 0.05) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, #262626 0 26px, #171717 26px 100%);
+}
+
+.fallen-card .pokemon-card__state-label {
+  background: #333333;
+  border-color: #7f7f7f;
+  color: #d0d0d0;
+}
+
+.fallen-card__meta {
+  color: #b2b2b2;
+  font-size: 0.76rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(15, 31, 56, 0.5);
+  background: rgba(8, 8, 8, 0.76);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.9rem;
 }
 
 .modal-card {
-  width: min(560px, 100%);
-  max-height: calc(100vh - 2rem);
+  width: min(520px, 100%);
+  max-height: calc(100vh - 1.8rem);
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background: linear-gradient(165deg, #ffffff 0%, #f3f8ff 100%);
-  box-shadow: 0 18px 40px rgba(15, 31, 56, 0.24);
-  padding: 0.95rem;
+  border-left: 8px solid var(--accent);
+  border-radius: 1px;
+  background: linear-gradient(165deg, #222222 0%, #141414 100%);
+  box-shadow: inset 0 0 0 1px rgba(215, 215, 215, 0.1);
+  padding: 0.8rem;
 }
 
 .modal-card__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.7rem;
-  align-items: flex-start;
-  margin-bottom: 0.7rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: start;
+  margin-bottom: 0.65rem;
 }
 
 .modal-card__title {
   margin: 0;
-  font-size: 1.15rem;
+  font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .modal-card__description {
-  margin: 0.25rem 0 0;
+  margin: 0.22rem 0 0;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .modal-card__content {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.75rem;
 }
 
 .modal-form {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.65rem;
+}
+
+.modal-form__error {
+  margin: -0.06rem 0 0;
+  color: #d0d0d0;
+  font-size: 0.74rem;
+  border: 1px solid #676767;
+  background: #262626;
+  padding: 0.34rem 0.42rem;
 }
 
 .modal-form__actions {
-  margin-top: 0.15rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.55rem;
+  margin-top: 0.1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.52rem;
 }
 
 .empty-state {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.92rem;
-}
-
-.fallen-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.62rem;
-  align-items: end;
-}
-
-.fallen-form .action-button {
-  grid-column: span 2;
-}
-
-.fallen-grid {
-  display: grid;
-  gap: 0.68rem;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-}
-
-.fallen-card {
-  background: linear-gradient(155deg, #fff8f8 0%, #ffffff 100%);
-  border-color: #efd2d7;
-}
-
-.fallen-card .pokemon-card__state-label {
-  background: rgba(198, 69, 79, 0.12);
-  color: var(--danger);
-}
-
-.fallen-card__meta {
-  color: #4a5a78;
-  font-size: 0.88rem;
-  margin: 0;
+  font-size: 0.84rem;
+  border: 1px dashed var(--line-soft);
+  border-radius: 1px;
+  background: #1f1f1f;
+  padding: 0.52rem;
 }
 
 .roadmap-panel {
   overflow: hidden;
 }
 
+.roadmap-sticky-head {
+  position: sticky;
+  top: 0.52rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line-soft);
+  border-left: 4px solid var(--accent);
+  background: linear-gradient(180deg, rgba(36, 36, 36, 0.95), rgba(25, 25, 25, 0.95));
+  backdrop-filter: blur(2px);
+}
+
+.roadmap-sticky-head__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.56rem;
+}
+
+.roadmap-sticky-head .action-button {
+  min-width: 0;
+}
+
+.roadmap-sticky-head__label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.roadmap-sticky-head__value {
+  margin: 0.14rem 0 0;
+  color: var(--accent);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.roadmap-progress {
+  height: 9px;
+  border: 1px solid var(--line-soft);
+  background: #1b1b1b;
+  overflow: hidden;
+}
+
+.roadmap-progress__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #757575 0%, #dedede 100%);
+  box-shadow: 0 0 10px rgba(220, 220, 220, 0.4);
+  transition: width 0.22s ease;
+}
+
+.roadmap-capture-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.34rem;
+}
+
+.roadmap-capture-filters__button {
+  min-height: 34px;
+  border: 1px solid var(--line-soft);
+  background: #212121;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.roadmap-capture-filters__button:hover {
+  border-color: var(--line);
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.roadmap-capture-filters__button--active {
+  border-color: var(--accent-deep);
+  color: var(--accent);
+  background: linear-gradient(180deg, #353535 0%, #282828 100%);
+}
+
+.roadmap-live-feedback {
+  margin: 0;
+  min-height: 1.2rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
 .roadmap-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.52rem;
 }
 
 .summary-item {
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.72rem;
+  background: linear-gradient(180deg, #252525 0%, #1c1c1c 100%);
+  border: 1px solid var(--line-soft);
+  border-radius: 1px;
+  padding: 0.55rem;
 }
 
 .summary-item__label {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
+  font-weight: 700;
 }
 
 .summary-item__value {
-  margin: 0.2rem 0 0;
-  font-size: 1.4rem;
-  font-weight: 800;
-}
-
-.roadmap-table-wrap {
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  overflow: auto;
-}
-
-.roadmap-table {
-  border-collapse: collapse;
-  min-width: 640px;
-  width: 100%;
-}
-
-.roadmap-table th,
-.roadmap-table td {
-  border-bottom: 1px solid var(--line);
-  padding: 0.6rem;
-  text-align: left;
-}
-
-.roadmap-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.roadmap-table thead th {
-  background: #f8fbff;
-  color: var(--text-muted);
-  font-size: 0.8rem;
+  margin: 0.18rem 0 0;
+  color: var(--accent);
+  font-size: 1.26rem;
   font-weight: 700;
-  text-transform: uppercase;
+  line-height: 1;
 }
 
-.roadmap-zone {
-  align-items: center;
+.roadmap-list {
+  position: relative;
+  margin: 0;
+  padding: 0 0 0 0.88rem;
+  list-style: none;
   display: flex;
+  flex-direction: column;
+  gap: 0.54rem;
+}
+
+.roadmap-list::before {
+  content: '';
+  position: absolute;
+  left: 0.26rem;
+  top: 0.34rem;
+  bottom: 0.34rem;
+  width: 2px;
+  background: linear-gradient(180deg, #464646 0%, #2b2b2b 100%);
+}
+
+.roadmap-row {
+  position: relative;
+  border: 1px solid var(--line-soft);
+  border-left: 4px solid #626262;
+  border-radius: 1px;
+  background: #1e1e1e;
+  padding: 0.52rem;
+  display: flex;
+  gap: 0.44rem;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.roadmap-row__timeline-dot {
+  position: absolute;
+  left: -1.05rem;
+  top: 1rem;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 2px solid #7a7a7a;
+  background: #121212;
+}
+
+.roadmap-row__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
+}
+
+.roadmap-row--leader {
+  border-left-color: #8f8f8f;
+}
+
+.roadmap-row--partial {
+  border-left-color: #bbbbbb;
+}
+
+.roadmap-row--done {
+  border-left-color: #d6d6d6;
+  background: #232323;
+}
+
+.roadmap-row--done .roadmap-row__timeline-dot {
+  border-color: #ebebeb;
+  background: #d3d3d3;
+}
+
+.roadmap-row--partial .roadmap-row__timeline-dot {
+  border-color: #cbcbcb;
+  background: #505050;
+}
+
+.roadmap-row--updated {
+  animation: roadmap-pulse 0.4s ease-out;
+}
+
+.roadmap-row--focused {
+  border-color: #efefef;
+  box-shadow: inset 0 0 0 1px rgba(235, 235, 235, 0.35);
+  animation: roadmap-focus-flash 1.2s ease-out;
+}
+
+.roadmap-row__top {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .roadmap-zone__name {
-  font-weight: 600;
   margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .level-cap-pill {
-  background: var(--accent-soft);
-  border-radius: 999px;
-  color: #0f4b9f;
-  font-size: 0.76rem;
-  font-weight: 800;
-  padding: 0.2rem 0.48rem;
+  background: linear-gradient(180deg, #404040 0%, #2a2a2a 100%);
+  border: 1px solid #858585;
+  border-radius: 1px;
+  color: #f1f1f1;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.42rem;
+  white-space: nowrap;
+}
+
+.roadmap-row__checks {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.roadmap-row__checks--single {
+  grid-template-columns: 1fr;
 }
 
 .roadmap-check {
-  align-items: center;
+  background: #252525;
+  border: 1px solid var(--line-soft);
+  border-radius: 1px;
+  padding: 0.34rem 0.4rem;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
 }
 
 .roadmap-check input {
   accent-color: var(--accent);
   cursor: pointer;
-  height: 20px;
+  height: 18px;
+  width: 18px;
   margin: 0;
-  width: 20px;
+}
+
+.roadmap-check__label {
+  font-size: 0.71rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .badges-module {
   background:
-    radial-gradient(circle at 10% 10%, rgba(34, 118, 235, 0.14), transparent 33%),
-    radial-gradient(circle at 90% 85%, rgba(23, 152, 96, 0.15), transparent 35%),
-    var(--bg-surface);
+    radial-gradient(circle at 10% 10%, rgba(215, 215, 215, 0.12), transparent 34%),
+    radial-gradient(circle at 90% 85%, rgba(70, 70, 70, 0.35), transparent 38%),
+    #141414;
   border: 1px solid var(--line);
-  border-radius: 20px;
-  box-shadow: 0 16px 34px rgba(15, 31, 56, 0.08);
-  min-height: 100vh;
-  padding: 1.2rem;
+  border-left: 8px solid var(--accent);
+  border-radius: 1px;
+  min-height: calc(100vh - 280px);
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 0.85rem;
 }
 
 .badges-header__eyebrow {
   margin: 0;
   color: var(--accent);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .badges-header__title {
-  margin: 0.35rem 0 0;
-  font-size: clamp(1.45rem, 2.35vw, 2rem);
+  margin: 0.32rem 0 0;
+  font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+  font-size: clamp(1.4rem, 5vw, 1.8rem);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .badges-header__description {
-  margin: 0.4rem 0 0;
-  max-width: 60ch;
+  margin: 0.36rem 0 0;
   color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .badges-header__progress {
-  margin: 0.55rem 0 0;
-  color: #0f4b9f;
+  margin: 0.5rem 0 0;
+  color: var(--accent);
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
 .badges-grid {
   display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.62rem;
 }
 
 .badge-token {
   align-items: center;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  background: #232323;
+  border: 1px solid var(--line-soft);
+  border-radius: 1px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  min-height: 168px;
-  padding: 0.7rem;
+  gap: 0.22rem;
+  min-height: 152px;
+  padding: 0.56rem;
   text-align: center;
-  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.15s ease, border-color 0.2s ease;
 }
 
 .badge-token:hover {
-  border-color: #98b5df;
-  box-shadow: 0 12px 24px rgba(15, 31, 56, 0.08);
+  border-color: var(--line);
   transform: translateY(-1px);
 }
 
 .badge-token__icon {
-  width: 92px;
-  height: 92px;
-  filter: grayscale(1) brightness(0.82);
+  width: 88px;
+  height: 88px;
+  filter: grayscale(1) brightness(0.65);
   transition: filter 0.2s ease, transform 0.2s ease;
 }
 
 .badge-token__label {
   color: var(--text-main);
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .badge-token__status {
   color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .badge-token--earned {
-  border-color: color-mix(in srgb, hsl(var(--badge-hue) 75% 46%), #ffffff 40%);
-  box-shadow: 0 14px 26px color-mix(in srgb, hsl(var(--badge-hue) 75% 40%), #ffffff 82%);
+  border-color: var(--accent-deep);
+  box-shadow: inset 0 0 0 1px rgba(235, 235, 235, 0.12);
 }
 
 .badge-token--earned .badge-token__icon {
   filter: grayscale(0);
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .badge-token--earned .badge-token__status {
@@ -716,76 +1189,115 @@ input {
   width: 1px;
 }
 
-@media (max-width: 960px) {
-  .module-grid {
-    grid-template-columns: 1fr;
+@keyframes terminal-blink {
+  0%,
+  48% {
+    opacity: 1;
   }
 
-  .metrics-grid,
-  .roadmap-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .fallen-form {
-    grid-template-columns: 1fr;
-  }
-
-  .fallen-form .action-button {
-    grid-column: auto;
+  50%,
+  100% {
+    opacity: 0;
   }
 }
 
-@media (max-width: 680px) {
-  .page-shell {
-    padding: 0.95rem;
+@keyframes roadmap-pulse {
+  0% {
+    transform: translateX(0);
+    filter: brightness(1);
   }
 
-  .inline-fields {
-    grid-template-columns: 1fr;
+  45% {
+    transform: translateX(1px);
+    filter: brightness(1.08);
   }
 
-  .pokemon-card__sprite-wrap {
-    width: 72px;
-    height: 72px;
-    flex-basis: 72px;
+  100% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+}
+
+@keyframes roadmap-focus-flash {
+  0% {
+    box-shadow: inset 0 0 0 1px rgba(235, 235, 235, 0.45);
   }
 
-  .pokemon-card__sprite {
-    width: 66px;
-    height: 66px;
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(235, 235, 235, 0);
+  }
+}
+
+@media (min-width: 520px) {
+  .metrics-grid,
+  .chosen-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .pokemon-card__state-label {
-    margin-left: 0;
+  .roadmap-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .revive-row__actions {
-    flex-direction: column;
-    align-items: stretch;
+  .badges-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .mobile-tab-nav {
+    width: calc(100% - 0.6rem);
+    gap: 0.28rem;
+    padding: 0.36rem;
+    padding-bottom: calc(0.36rem + env(safe-area-inset-bottom));
   }
 
-  .module-toolbar .action-button {
-    width: 100%;
+  .mobile-tab-nav__item {
+    min-height: 40px;
+  }
+
+  .page-shell--content {
+    padding-bottom: calc(5.8rem + env(safe-area-inset-bottom));
   }
 
   .modal-card__header {
-    flex-direction: column;
-  }
-
-  .modal-form__actions {
-    flex-direction: column;
-  }
-
-  .modal-form__actions .action-button {
-    width: 100%;
-  }
-
-  .metrics-grid,
-  .roadmap-summary {
     grid-template-columns: 1fr;
   }
 
-  .badge-token {
-    min-height: 152px;
+  .modal-form__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .roadmap-sticky-head__top {
+    grid-template-columns: 1fr;
+  }
+
+  .roadmap-sticky-head .action-button {
+    width: 100%;
+  }
+
+  .pokemon-card__main {
+    grid-template-columns: minmax(94px, 34%) minmax(0, 1fr);
+  }
+
+  .pokemon-card__art-wrap {
+    min-height: 106px;
+  }
+
+  .pokemon-card__artwork {
+    max-height: 126px;
+  }
+
+  .roadmap-summary,
+  .badges-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

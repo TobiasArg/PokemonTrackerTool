@@ -19,11 +19,10 @@ export const BadgesModule = () => {
       </header>
 
       <div className="badges-grid">
-        {badges.map((badge, index) => {
+        {badges.map((badge) => {
           return (
             <BadgeToken
               badge={badge}
-              index={index}
               key={badge.id}
               onToggle={toggleBadge}
             />

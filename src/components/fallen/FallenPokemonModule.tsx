@@ -21,48 +21,75 @@ const INITIAL_FORM_STATE: FallenFormState = {
   cause: '',
 }
 
-export const FallenPokemonModule = () => {
+const INVALID_FALLEN_ERROR =
+  'Completa nombre, nivel, ruta de captura y causa con datos válidos.'
+
+type FallenPokemonModuleProps = {
+  compact?: boolean
+}
+
+export const FallenPokemonModule = ({ compact = false }: FallenPokemonModuleProps) => {
   const { fallenPokemons, addFallenPokemon, removeFallenPokemon } = useFallenPokemon()
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [formState, setFormState] = useState<FallenFormState>(INITIAL_FORM_STATE)
+  const [registerError, setRegisterError] = useState<string | null>(null)
+
+  const updateFormField = (field: keyof FallenFormState, value: string) => {
+    setFormState((state) => ({ ...state, [field]: value }))
+    if (registerError) {
+      setRegisterError(null)
+    }
+  }
 
   const openRegisterModal = () => {
     setFormState(INITIAL_FORM_STATE)
+    setRegisterError(null)
     setIsRegisterOpen(true)
   }
 
   const closeRegisterModal = () => {
     setIsRegisterOpen(false)
     setFormState(INITIAL_FORM_STATE)
+    setRegisterError(null)
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    addFallenPokemon({
+    const result = addFallenPokemon({
       name: formState.name,
       level: Number.parseInt(formState.level, 10),
       captureZone: formState.captureZone,
       cause: formState.cause,
     })
 
-    closeRegisterModal()
+    if (result === 'added') {
+      closeRegisterModal()
+      return
+    }
+
+    setRegisterError(INVALID_FALLEN_ERROR)
   }
 
   return (
     <>
       <Panel
-        description="Registra los Pokémon muertos con información clave de la run."
-        title="Módulo de Pokémon Caídos"
+        hideHeader={compact}
+        description={compact ? undefined : 'Registra los Pokémon muertos con datos de la run.'}
+        title={compact ? 'Pokémon caídos' : 'Módulo de Pokémon Caídos'}
       >
         <div className="module-toolbar">
+          <div className="module-toolbar__meta">
+            <p className="module-toolbar__kicker">Registro</p>
+            <p className="module-toolbar__info">{fallenPokemons.length} caídos cargados</p>
+          </div>
           <ActionButton onClick={openRegisterModal} variant="secondary">
-            Registrar
+            Registrar caída
           </ActionButton>
         </div>
 
         {!fallenPokemons.length ? (
-          <p className="empty-state">No hay Pokémon caídos registrados.</p>
+          <p className="empty-state">Sin Pokémon caídos.</p>
         ) : (
           <div className="fallen-grid">
             {fallenPokemons.map((pokemon) => {
@@ -88,9 +115,7 @@ export const FallenPokemonModule = () => {
           <TextField
             id="fallen-modal-name"
             label="Nombre"
-            onChange={(event) =>
-              setFormState((state) => ({ ...state, name: event.target.value }))
-            }
+            onChange={(event) => updateFormField('name', event.target.value)}
             placeholder="Ej: Arcanine"
             required
             value={formState.name}
@@ -100,9 +125,7 @@ export const FallenPokemonModule = () => {
             label="Nivel"
             max={100}
             min={1}
-            onChange={(event) =>
-              setFormState((state) => ({ ...state, level: event.target.value }))
-            }
+            onChange={(event) => updateFormField('level', event.target.value)}
             placeholder="Ej: 32"
             required
             type="number"
@@ -111,12 +134,7 @@ export const FallenPokemonModule = () => {
           <TextField
             id="fallen-modal-capture-zone"
             label="Ruta de captura"
-            onChange={(event) =>
-              setFormState((state) => ({
-                ...state,
-                captureZone: event.target.value,
-              }))
-            }
+            onChange={(event) => updateFormField('captureZone', event.target.value)}
             placeholder="Ej: Ruta 16"
             required
             value={formState.captureZone}
@@ -124,13 +142,13 @@ export const FallenPokemonModule = () => {
           <TextField
             id="fallen-modal-cause"
             label="Causa"
-            onChange={(event) =>
-              setFormState((state) => ({ ...state, cause: event.target.value }))
-            }
+            onChange={(event) => updateFormField('cause', event.target.value)}
             placeholder="Ej: Crítico inesperado"
             required
             value={formState.cause}
           />
+
+          {registerError ? <p className="modal-form__error">{registerError}</p> : null}
 
           <div className="modal-form__actions">
             <ActionButton onClick={closeRegisterModal} type="button" variant="ghost">
