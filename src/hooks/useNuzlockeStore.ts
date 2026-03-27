@@ -1,7 +1,11 @@
+import type { Session } from '@supabase/supabase-js'
 import { nanoid } from 'nanoid'
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
+import { authService } from '../services/authService'
+import { runsService } from '../services/runsService'
+import { snapshotService } from '../services/snapshotService'
+import type { AuthStatus, RunSummary, SyncStatus, UserSession } from '../types/app'
 import { normalizePokemonKey } from '../utils/pokemonNormalization'
 
 export type FallenPokemon = {
@@ -54,19 +58,8 @@ export type AddChosenPokemonResult =
   | 'fallen'
   | 'limit-reached'
 
-export type NuzlockeStoreState = {
-  fallenPokemons: FallenPokemon[]
-  chosenPokemons: ChosenPokemon[]
-  zoneProgress: Record<string, ZoneProgress>
-  badges: BadgeState[]
-  addFallenPokemon: (payload: AddFallenPokemonPayload) => AddFallenPokemonResult
-  removeFallenPokemon: (id: string) => void
-  addChosenPokemon: (pokemonName: string) => AddChosenPokemonResult
-  removeChosenPokemon: (id: string) => void
-  trimChosenPokemons: (limit: number) => void
-  toggleZoneProgress: (zoneId: string, field: keyof ZoneProgress) => void
-  toggleBadge: (badgeId: string) => void
-}
+const LEGACY_LOCAL_STORAGE_KEY = 'nuzlocke-b2w2-tracker/v1'
+const ACTIVE_RUN_STORAGE_PREFIX = 'nuzlocke-active-run/v1:'
 
 const GYM_LEADER_ZONE_IDS = [
   'cheren',
@@ -153,6 +146,13 @@ export const INITIAL_BADGES: BadgeState[] = [
   { id: 'badge-8', label: 'Medalla Ciprián', earned: false },
 ]
 
+type DomainState = {
+  fallenPokemons: FallenPokemon[]
+  chosenPokemons: ChosenPokemon[]
+  zoneProgress: Record<string, ZoneProgress>
+  badges: BadgeState[]
+}
+
 const createInitialZoneProgress = (): Record<string, ZoneProgress> => {
   return ROADMAP_ZONES.reduce<Record<string, ZoneProgress>>((accumulator, zone) => {
     accumulator[zone.id] = {
@@ -164,6 +164,15 @@ const createInitialZoneProgress = (): Record<string, ZoneProgress> => {
   }, {})
 }
 
+const createInitialDomainState = (): DomainState => {
+  return {
+    fallenPokemons: [],
+    chosenPokemons: [],
+    zoneProgress: createInitialZoneProgress(),
+    badges: INITIAL_BADGES,
+  }
+}
+
 const sanitizeNonEmpty = (value: string): string => value.trim()
 
 const sanitizeLevel = (value: number): number => {
@@ -172,6 +181,25 @@ const sanitizeLevel = (value: number): number => {
   }
 
   return Math.max(1, Math.min(100, Math.floor(value)))
+}
+
+const getActiveRunStorageKey = (userId: string): string => {
+  return `${ACTIVE_RUN_STORAGE_PREFIX}${userId}`
+}
+
+const getStoredActiveRunId = (userId: string): string | null => {
+  return localStorage.getItem(getActiveRunStorageKey(userId))
+}
+
+const storeActiveRunId = (userId: string, runId: string | null): void => {
+  const key = getActiveRunStorageKey(userId)
+
+  if (!runId) {
+    localStorage.removeItem(key)
+    return
+  }
+
+  localStorage.setItem(key, runId)
 }
 
 const countCapturedZones = (progress: Record<string, ZoneProgress>): number => {
@@ -214,344 +242,808 @@ const syncLeaderBadgesWithProgress = (
   })
 }
 
-export const useNuzlockeStore = create<NuzlockeStoreState>()(
-  persist(
-    (set) => ({
-      fallenPokemons: [],
-      chosenPokemons: [],
-      zoneProgress: createInitialZoneProgress(),
-      badges: INITIAL_BADGES,
-      addFallenPokemon: (payload) => {
-        let result: AddFallenPokemonResult = 'invalid'
+const sanitizeDomainState = (domain: DomainState): DomainState => {
+  const mergedZoneProgress = createInitialZoneProgress()
 
-        set((state) => {
-          const name = sanitizeNonEmpty(payload.name)
-          const captureZone = sanitizeNonEmpty(payload.captureZone)
-          const cause = sanitizeNonEmpty(payload.cause)
+  for (const [zoneId, progress] of Object.entries(domain.zoneProgress ?? {})) {
+    if (!ROADMAP_ZONE_MAP.has(zoneId)) {
+      continue
+    }
 
-          if (!name || !captureZone || !cause) {
-            return state
-          }
+    if (isGymLeaderZone(zoneId)) {
+      mergedZoneProgress[zoneId] = {
+        captured: false,
+        completed: Boolean(progress?.completed),
+      }
+      continue
+    }
 
-          result = 'added'
-          const fallenKey = normalizePokemonKey(name)
+    mergedZoneProgress[zoneId] = {
+      captured: Boolean(progress?.captured),
+      completed: Boolean(progress?.completed),
+    }
+  }
 
-          return {
-            fallenPokemons: [
-              {
-                id: nanoid(),
-                name,
-                level: sanitizeLevel(payload.level),
-                captureZone,
-                cause,
-                createdAt: new Date().toISOString(),
-              },
-              ...state.fallenPokemons,
-            ],
-            chosenPokemons: state.chosenPokemons.filter((item) => {
-              return normalizePokemonKey(item.pokemonName) !== fallenKey
-            }),
-          }
-        })
-
-        return result
-      },
-      removeFallenPokemon: (id) => {
-        set((state) => ({
-          fallenPokemons: state.fallenPokemons.filter((item) => item.id !== id),
-        }))
-      },
-      addChosenPokemon: (pokemonName) => {
-        let result: AddChosenPokemonResult = 'empty'
-
-        set((state) => {
-          const normalizedName = sanitizeNonEmpty(pokemonName)
-
-          if (!normalizedName) {
-            return state
-          }
-
-          const captureLimit = countCapturedZones(state.zoneProgress)
-          if (state.chosenPokemons.length >= captureLimit) {
-            result = 'limit-reached'
-            return state
-          }
-
-          const normalizedKey = normalizePokemonKey(normalizedName)
-          const fallenNames = new Set(
-            state.fallenPokemons.map((item) => normalizePokemonKey(item.name)),
-          )
-
-          if (fallenNames.has(normalizedKey)) {
-            result = 'fallen'
-            return state
-          }
-
-          const hasDuplicate = state.chosenPokemons.some((item) => {
-            return normalizePokemonKey(item.pokemonName) === normalizedKey
-          })
-
-          if (hasDuplicate) {
-            result = 'duplicate'
-            return state
-          }
-
-          result = 'added'
-          return {
-            chosenPokemons: [
-              ...state.chosenPokemons,
-              {
-                id: nanoid(),
-                pokemonName: normalizedName,
-                createdAt: new Date().toISOString(),
-              },
-            ],
-          }
-        })
-
-        return result
-      },
-      removeChosenPokemon: (id) => {
-        set((state) => ({
-          chosenPokemons: state.chosenPokemons.filter((item) => item.id !== id),
-        }))
-      },
-      trimChosenPokemons: (limit) => {
-        const normalizedLimit = Math.max(0, Math.floor(limit))
-
-        set((state) => {
-          if (state.chosenPokemons.length <= normalizedLimit) {
-            return state
-          }
-
-          return {
-            chosenPokemons: state.chosenPokemons.slice(0, normalizedLimit),
-          }
-        })
-      },
-      toggleZoneProgress: (zoneId, field) => {
-        set((state) => {
-          const zone = ROADMAP_ZONE_MAP.get(zoneId)
-
-          if (!zone) {
-            return state
-          }
-
-          const currentProgress =
-            state.zoneProgress[zoneId] ??
-            ({
-              captured: false,
-              completed: false,
-            } satisfies ZoneProgress)
-
-          if (zone.checkpoint === 'leader') {
-            if (field !== 'completed') {
-              return state
-            }
-
-            const completed = !currentProgress.completed
-            const nextZoneProgress = {
-              ...state.zoneProgress,
-              [zoneId]: {
-                captured: false,
-                completed,
-              },
-            }
-
-            const badgeId = LEADER_ZONE_TO_BADGE_MAP[zoneId]
-            const nextBadges = badgeId
-              ? state.badges.map((badge) => {
-                  if (badge.id !== badgeId) {
-                    return badge
-                  }
-
-                  return {
-                    ...badge,
-                    earned: completed,
-                  }
-                })
-              : state.badges
-
-            return {
-              zoneProgress: nextZoneProgress,
-              badges: nextBadges,
-              chosenPokemons: clampChosenToCaptureLimit(
-                state.chosenPokemons,
-                nextZoneProgress,
-              ),
-            }
-          }
-
-          const nextProgress = { ...currentProgress }
-
-          if (field === 'captured') {
-            const captured = !currentProgress.captured
-            nextProgress.captured = captured
-          }
-
-          if (field === 'completed') {
-            const completed = !currentProgress.completed
-            nextProgress.completed = completed
-          }
-
-          const nextZoneProgress = {
-            ...state.zoneProgress,
-            [zoneId]: nextProgress,
-          }
-
-          return {
-            zoneProgress: nextZoneProgress,
-            chosenPokemons: clampChosenToCaptureLimit(
-              state.chosenPokemons,
-              nextZoneProgress,
-            ),
-          }
-        })
-      },
-      toggleBadge: (badgeId) => {
-        set((state) => {
-          let nextEarned = false
-
-          const nextBadges = state.badges.map((badge) => {
-            if (badge.id !== badgeId) {
-              return badge
-            }
-
-            nextEarned = !badge.earned
-
-            return {
-              ...badge,
-              earned: nextEarned,
-            }
-          })
-
-          const linkedZoneId = BADGE_TO_LEADER_ZONE_MAP[badgeId]
-          if (!linkedZoneId) {
-            return { badges: nextBadges }
-          }
-
-          const currentProgress =
-            state.zoneProgress[linkedZoneId] ??
-            ({
-              captured: false,
-              completed: false,
-            } satisfies ZoneProgress)
-
-          return {
-            badges: nextBadges,
-            zoneProgress: {
-              ...state.zoneProgress,
-              [linkedZoneId]: {
-                ...currentProgress,
-                captured: false,
-                completed: nextEarned,
-              },
-            },
-          }
-        })
-      },
+  const mergedBadges = syncLeaderBadgesWithProgress(
+    INITIAL_BADGES.map((badge) => {
+      const candidate = domain.badges?.find((item) => item.id === badge.id)
+      return {
+        ...badge,
+        earned: candidate ? Boolean(candidate.earned) : badge.earned,
+      }
     }),
-    {
-      name: 'nuzlocke-b2w2-tracker/v1',
-      partialize: (state) => ({
-        fallenPokemons: state.fallenPokemons,
-        chosenPokemons: state.chosenPokemons,
-        zoneProgress: state.zoneProgress,
-        badges: state.badges,
-      }),
-      merge: (persistedState, currentState) => {
-        const safeState = persistedState as Partial<NuzlockeStoreState>
+    mergedZoneProgress,
+  )
 
-        const mergedZoneProgress = createInitialZoneProgress()
-        for (const [zoneId, progress] of Object.entries(safeState.zoneProgress ?? {})) {
-          if (!ROADMAP_ZONE_MAP.has(zoneId)) {
-            continue
-          }
+  const mergedFallenPokemons = (domain.fallenPokemons ?? [])
+    .filter((candidate): candidate is FallenPokemon => {
+      return Boolean(
+        candidate?.id &&
+          candidate?.name &&
+          candidate?.captureZone &&
+          candidate?.cause &&
+          candidate?.createdAt,
+      )
+    })
+    .map((candidate) => ({
+      id: candidate.id,
+      name: sanitizeNonEmpty(candidate.name),
+      level: sanitizeLevel(candidate.level),
+      captureZone: sanitizeNonEmpty(candidate.captureZone),
+      cause: sanitizeNonEmpty(candidate.cause),
+      createdAt: candidate.createdAt,
+    }))
+    .filter((candidate) => Boolean(candidate.name && candidate.captureZone && candidate.cause))
 
-          if (isGymLeaderZone(zoneId)) {
-            mergedZoneProgress[zoneId] = {
-              captured: false,
-              completed: Boolean(progress?.completed),
-            }
-            continue
-          }
+  const fallenNameKeys = new Set(
+    mergedFallenPokemons.map((pokemon) => normalizePokemonKey(pokemon.name)),
+  )
 
-          mergedZoneProgress[zoneId] = {
-            captured: Boolean(progress?.captured),
-            completed: Boolean(progress?.completed),
-          }
-        }
+  const mergedChosenPokemons = (domain.chosenPokemons ?? [])
+    .filter((candidate): candidate is ChosenPokemon => {
+      return Boolean(candidate?.id && candidate?.pokemonName && candidate?.createdAt)
+    })
+    .map((candidate) => ({
+      id: candidate.id,
+      pokemonName: sanitizeNonEmpty(candidate.pokemonName),
+      createdAt: candidate.createdAt,
+    }))
+    .filter((candidate) => candidate.pokemonName.length > 0)
+    .filter((candidate) => !fallenNameKeys.has(normalizePokemonKey(candidate.pokemonName)))
 
-        const mergedBadges = INITIAL_BADGES.map((badge) => {
-          const persistedBadge = safeState.badges?.find(
-            (candidate) => candidate.id === badge.id,
-          )
+  return {
+    fallenPokemons: mergedFallenPokemons,
+    chosenPokemons: clampChosenToCaptureLimit(mergedChosenPokemons, mergedZoneProgress),
+    zoneProgress: mergedZoneProgress,
+    badges: mergedBadges,
+  }
+}
 
-          return {
-            ...badge,
-            earned: persistedBadge ? Boolean(persistedBadge.earned) : badge.earned,
-          }
+const parseLegacyDomainState = (): DomainState | null => {
+  const raw = localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY)
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: Partial<DomainState>
+    } & Partial<DomainState>
+
+    const legacyState = (parsed.state ?? parsed) as Partial<DomainState>
+
+    return sanitizeDomainState({
+      fallenPokemons: legacyState.fallenPokemons ?? [],
+      chosenPokemons: legacyState.chosenPokemons ?? [],
+      zoneProgress: legacyState.zoneProgress ?? createInitialZoneProgress(),
+      badges: legacyState.badges ?? INITIAL_BADGES,
+    })
+  } catch {
+    return null
+  }
+}
+
+export type NuzlockeStoreState = DomainState & {
+  authStatus: AuthStatus
+  isBootstrapped: boolean
+  session: UserSession | null
+  rawSession: Session | null
+  runs: RunSummary[]
+  activeRunId: string | null
+  syncStatus: SyncStatus
+  syncError: string | null
+  lastSyncedAt: string | null
+  isHydratingRunData: boolean
+  dataRevision: number
+  lastPersistedRevision: number
+  bootstrap: () => Promise<void>
+  loadRuns: () => Promise<void>
+  createRun: (name: string) => Promise<RunSummary | null>
+  renameRun: (runId: string, name: string) => Promise<void>
+  archiveRun: (runId: string, archived: boolean) => Promise<void>
+  deleteRun: (runId: string) => Promise<void>
+  setActiveRun: (runId: string | null) => Promise<void>
+  loadActiveRunSnapshot: () => Promise<void>
+  persistActiveRunSnapshot: () => Promise<void>
+  migrateLegacyLocalState: () => Promise<void>
+  signIn: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>
+  signUp: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>
+  signOut: () => Promise<void>
+  clearSyncError: () => void
+  addFallenPokemon: (payload: AddFallenPokemonPayload) => AddFallenPokemonResult
+  removeFallenPokemon: (id: string) => void
+  addChosenPokemon: (pokemonName: string) => AddChosenPokemonResult
+  removeChosenPokemon: (id: string) => void
+  trimChosenPokemons: (limit: number) => void
+  toggleZoneProgress: (zoneId: string, field: keyof ZoneProgress) => void
+  toggleBadge: (badgeId: string) => void
+}
+
+const initialDomainState = createInitialDomainState()
+
+const toUserSession = (session: Session | null): UserSession | null => {
+  if (!session) {
+    return null
+  }
+
+  return {
+    userId: session.user.id,
+    email: session.user.email ?? null,
+  }
+}
+
+export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
+  ...initialDomainState,
+  authStatus: 'loading',
+  isBootstrapped: false,
+  session: null,
+  rawSession: null,
+  runs: [],
+  activeRunId: null,
+  syncStatus: 'idle',
+  syncError: null,
+  lastSyncedAt: null,
+  isHydratingRunData: false,
+  dataRevision: 0,
+  lastPersistedRevision: 0,
+
+  bootstrap: async () => {
+    set({ authStatus: 'loading', syncError: null })
+
+    try {
+      const session = await authService.getSession()
+      const userSession = toUserSession(session)
+
+      if (!session || !userSession) {
+        set({
+          ...createInitialDomainState(),
+          authStatus: 'unauthenticated',
+          isBootstrapped: true,
+          session: null,
+          rawSession: null,
+          runs: [],
+          activeRunId: null,
+          syncStatus: 'idle',
+          syncError: null,
+          isHydratingRunData: false,
+          dataRevision: 0,
+          lastPersistedRevision: 0,
         })
+        return
+      }
 
-        const syncedBadges = syncLeaderBadgesWithProgress(
-          mergedBadges,
-          mergedZoneProgress,
-        )
+      set({
+        authStatus: 'authenticated',
+        session: userSession,
+        rawSession: session,
+      })
 
-        const mergedFallenPokemons = (safeState.fallenPokemons ?? [])
-          .filter((candidate): candidate is FallenPokemon => {
-            return Boolean(
-              candidate?.id &&
-                candidate?.name &&
-                candidate?.captureZone &&
-                candidate?.cause &&
-                candidate?.createdAt,
-            )
-          })
-          .map((candidate) => ({
-            id: candidate.id,
-            name: sanitizeNonEmpty(candidate.name),
-            level: sanitizeLevel(candidate.level),
-            captureZone: sanitizeNonEmpty(candidate.captureZone),
-            cause: sanitizeNonEmpty(candidate.cause),
-            createdAt: candidate.createdAt,
-          }))
-          .filter((candidate) => {
-            return Boolean(candidate.name && candidate.captureZone && candidate.cause)
-          })
+      await get().loadRuns()
+      await get().migrateLegacyLocalState()
+      await get().loadRuns()
 
-        const fallenNameKeys = new Set(
-          mergedFallenPokemons.map((pokemon) => normalizePokemonKey(pokemon.name)),
-        )
+      let nextRuns = get().runs
+      if (nextRuns.length === 0) {
+        const created = await get().createRun('Mi primera run')
+        if (created) {
+          nextRuns = [created]
+        }
+      }
 
-        const mergedChosenPokemons = (safeState.chosenPokemons ?? [])
-          .filter((candidate): candidate is ChosenPokemon => {
-            return Boolean(
-              candidate?.id && candidate?.pokemonName && candidate?.createdAt,
-            )
-          })
-          .map((candidate) => ({
-            id: candidate.id,
-            pokemonName: sanitizeNonEmpty(candidate.pokemonName),
-            createdAt: candidate.createdAt,
-          }))
-          .filter((candidate) => candidate.pokemonName.length > 0)
-          .filter((candidate) => !fallenNameKeys.has(normalizePokemonKey(candidate.pokemonName)))
+      if (nextRuns.length === 0) {
+        set({ isBootstrapped: true, syncStatus: 'idle' })
+        return
+      }
 
-        const normalizedChosenPokemons = clampChosenToCaptureLimit(
-          mergedChosenPokemons,
-          mergedZoneProgress,
-        )
+      const preferredRunId = getStoredActiveRunId(userSession.userId)
+      const chosenRun = nextRuns.find((run) => run.id === preferredRunId) ?? nextRuns[0]
+
+      await get().setActiveRun(chosenRun.id)
+
+      set({ isBootstrapped: true })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo iniciar la app.'
+      set({
+        ...createInitialDomainState(),
+        authStatus: 'unauthenticated',
+        isBootstrapped: true,
+        session: null,
+        rawSession: null,
+        runs: [],
+        activeRunId: null,
+        syncStatus: 'error',
+        syncError: message,
+      })
+    }
+  },
+
+  loadRuns: async () => {
+    if (!get().session) {
+      set({ runs: [] })
+      return
+    }
+
+    const runs = await runsService.listRuns()
+    set({ runs })
+  },
+
+  createRun: async (name) => {
+    if (!get().session) {
+      return null
+    }
+
+    const run = await runsService.createRun(name)
+    set((state) => ({
+      runs: [...state.runs, run],
+    }))
+
+    return run
+  },
+
+  renameRun: async (runId, name) => {
+    await runsService.renameRun(runId, name)
+    set((state) => ({
+      runs: state.runs.map((run) => {
+        if (run.id !== runId) {
+          return run
+        }
 
         return {
-          ...currentState,
-          ...safeState,
-          fallenPokemons: mergedFallenPokemons,
-          chosenPokemons: normalizedChosenPokemons,
-          zoneProgress: mergedZoneProgress,
-          badges: syncedBadges,
+          ...run,
+          name: sanitizeNonEmpty(name) || run.name,
         }
-      },
-    },
-  ),
-)
+      }),
+    }))
+  },
+
+  archiveRun: async (runId, archived) => {
+    await runsService.archiveRun(runId, archived)
+    set((state) => ({
+      runs: state.runs.map((run) => {
+        if (run.id !== runId) {
+          return run
+        }
+
+        return {
+          ...run,
+          isArchived: archived,
+        }
+      }),
+    }))
+  },
+
+  deleteRun: async (runId) => {
+    await runsService.deleteRun(runId)
+
+    const state = get()
+    const nextRuns = state.runs.filter((run) => run.id !== runId)
+
+    set({ runs: nextRuns })
+
+    if (state.activeRunId !== runId) {
+      return
+    }
+
+    const fallback = nextRuns[0]
+    if (!fallback) {
+      set({
+        ...createInitialDomainState(),
+        activeRunId: null,
+        syncStatus: 'idle',
+        isHydratingRunData: false,
+        dataRevision: 0,
+        lastPersistedRevision: 0,
+      })
+
+      if (state.session) {
+        storeActiveRunId(state.session.userId, null)
+      }
+
+      return
+    }
+
+    await get().setActiveRun(fallback.id)
+  },
+
+  setActiveRun: async (runId) => {
+    const state = get()
+
+    if (!state.session) {
+      set({ activeRunId: null })
+      return
+    }
+
+    if (!runId) {
+      storeActiveRunId(state.session.userId, null)
+      set({
+        activeRunId: null,
+        ...createInitialDomainState(),
+        syncStatus: 'idle',
+        isHydratingRunData: false,
+        dataRevision: 0,
+        lastPersistedRevision: 0,
+      })
+      return
+    }
+
+    storeActiveRunId(state.session.userId, runId)
+    set({ activeRunId: runId })
+
+    await get().loadActiveRunSnapshot()
+  },
+
+  loadActiveRunSnapshot: async () => {
+    const { activeRunId } = get()
+
+    if (!activeRunId) {
+      return
+    }
+
+    set({ syncStatus: 'loading', syncError: null, isHydratingRunData: true })
+
+    try {
+      const snapshot = await snapshotService.getRunSnapshot(activeRunId)
+      const sanitized = sanitizeDomainState({
+        fallenPokemons: snapshot.fallenPokemons,
+        chosenPokemons: snapshot.chosenPokemons,
+        zoneProgress: snapshot.zoneProgress,
+        badges: INITIAL_BADGES.map((badge) => {
+          const saved = snapshot.badges.find((item) => item.id === badge.id)
+          return {
+            ...badge,
+            earned: saved ? saved.earned : badge.earned,
+          }
+        }),
+      })
+
+      set((state) => ({
+        ...sanitized,
+        runs: state.runs.map((run) => (run.id === snapshot.run.id ? snapshot.run : run)),
+        syncStatus: 'idle',
+        syncError: null,
+        isHydratingRunData: false,
+        dataRevision: 0,
+        lastPersistedRevision: 0,
+      }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo cargar la run.'
+      set({ syncStatus: 'error', syncError: message, isHydratingRunData: false })
+    }
+  },
+
+  persistActiveRunSnapshot: async () => {
+    const state = get()
+
+    if (!state.session || !state.activeRunId) {
+      return
+    }
+
+    set({ syncStatus: 'saving', syncError: null })
+
+    try {
+      await snapshotService.saveRunSnapshot(state.activeRunId, {
+        zoneProgress: state.zoneProgress,
+        badges: state.badges.map((badge) => ({
+          id: badge.id,
+          earned: badge.earned,
+        })),
+        chosenPokemons: state.chosenPokemons,
+        fallenPokemons: state.fallenPokemons,
+      })
+
+      set({
+        syncStatus: 'idle',
+        lastSyncedAt: new Date().toISOString(),
+        syncError: null,
+        lastPersistedRevision: state.dataRevision,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo guardar la run.'
+      set({ syncStatus: 'error', syncError: message })
+    }
+  },
+
+  migrateLegacyLocalState: async () => {
+    const state = get()
+    if (!state.rawSession || !state.session) {
+      return
+    }
+
+    const hasMigrationFlag = Boolean(state.rawSession.user.user_metadata?.migration_done_v1)
+    if (hasMigrationFlag) {
+      return
+    }
+
+    const legacyDomainState = parseLegacyDomainState()
+    if (!legacyDomainState) {
+      await authService.markLegacyMigrationDone()
+      const refreshedSession = await authService.getSession()
+      set({
+        rawSession: refreshedSession,
+        session: toUserSession(refreshedSession),
+      })
+      return
+    }
+
+    const existingMigratedRun = state.runs.find((run) => run.name === 'Run migrada')
+    const targetRun = existingMigratedRun ?? (await runsService.createRun('Run migrada'))
+
+    await snapshotService.saveRunSnapshot(targetRun.id, {
+      zoneProgress: legacyDomainState.zoneProgress,
+      badges: legacyDomainState.badges.map((badge) => ({
+        id: badge.id,
+        earned: badge.earned,
+      })),
+      chosenPokemons: legacyDomainState.chosenPokemons,
+      fallenPokemons: legacyDomainState.fallenPokemons,
+    })
+
+    await authService.markLegacyMigrationDone()
+    const refreshedSession = await authService.getSession()
+
+    set((current) => ({
+      rawSession: refreshedSession,
+      session: toUserSession(refreshedSession),
+      runs: current.runs.some((run) => run.id === targetRun.id)
+        ? current.runs
+        : [...current.runs, targetRun],
+    }))
+  },
+
+  signIn: async (email, password) => {
+    try {
+      const session = await authService.signIn(email, password)
+      if (!session) {
+        return {
+          ok: false,
+          error: 'No se pudo iniciar sesión. Verifica tus credenciales.',
+        } as const
+      }
+
+      set({
+        rawSession: session,
+        session: toUserSession(session),
+        authStatus: 'authenticated',
+      })
+
+      await get().bootstrap()
+      return { ok: true } as const
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : 'No se pudo iniciar sesión.',
+      } as const
+    }
+  },
+
+  signUp: async (email, password) => {
+    try {
+      const session = await authService.signUp(email, password)
+      if (!session) {
+        return {
+          ok: false,
+          error:
+            'Cuenta creada. Revisa tu email para confirmar la cuenta y luego inicia sesión.',
+        } as const
+      }
+
+      set({
+        rawSession: session,
+        session: toUserSession(session),
+        authStatus: 'authenticated',
+      })
+
+      await get().bootstrap()
+      return { ok: true } as const
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : 'No se pudo registrar la cuenta.',
+      } as const
+    }
+  },
+
+  signOut: async () => {
+    await authService.signOut()
+
+    set({
+      ...createInitialDomainState(),
+      authStatus: 'unauthenticated',
+      session: null,
+      rawSession: null,
+      runs: [],
+      activeRunId: null,
+      syncStatus: 'idle',
+      syncError: null,
+      isHydratingRunData: false,
+      dataRevision: 0,
+      lastPersistedRevision: 0,
+      isBootstrapped: true,
+    })
+  },
+
+  clearSyncError: () => {
+    set({ syncError: null })
+  },
+
+  addFallenPokemon: (payload) => {
+    const state = get()
+    if (!state.activeRunId) {
+      return 'invalid'
+    }
+
+    const name = sanitizeNonEmpty(payload.name)
+    const captureZone = sanitizeNonEmpty(payload.captureZone)
+    const cause = sanitizeNonEmpty(payload.cause)
+
+    if (!name || !captureZone || !cause) {
+      return 'invalid'
+    }
+
+    const fallenKey = normalizePokemonKey(name)
+
+    set((current) => ({
+      fallenPokemons: [
+        {
+          id: nanoid(),
+          name,
+          level: sanitizeLevel(payload.level),
+          captureZone,
+          cause,
+          createdAt: new Date().toISOString(),
+        },
+        ...current.fallenPokemons,
+      ],
+      chosenPokemons: current.chosenPokemons.filter((item) => {
+        return normalizePokemonKey(item.pokemonName) !== fallenKey
+      }),
+      dataRevision: current.dataRevision + 1,
+    }))
+
+    return 'added'
+  },
+
+  removeFallenPokemon: (id) => {
+    const state = get()
+    if (!state.activeRunId) {
+      return
+    }
+
+    set((current) => ({
+      fallenPokemons: current.fallenPokemons.filter((item) => item.id !== id),
+      dataRevision: current.dataRevision + 1,
+    }))
+  },
+
+  addChosenPokemon: (pokemonName) => {
+    const state = get()
+    if (!state.activeRunId) {
+      return 'limit-reached'
+    }
+
+    const normalizedName = sanitizeNonEmpty(pokemonName)
+
+    if (!normalizedName) {
+      return 'empty'
+    }
+
+    const captureLimit = countCapturedZones(state.zoneProgress)
+    if (state.chosenPokemons.length >= captureLimit) {
+      return 'limit-reached'
+    }
+
+    const normalizedKey = normalizePokemonKey(normalizedName)
+    const fallenNames = new Set(
+      state.fallenPokemons.map((item) => normalizePokemonKey(item.name)),
+    )
+
+    if (fallenNames.has(normalizedKey)) {
+      return 'fallen'
+    }
+
+    const hasDuplicate = state.chosenPokemons.some((item) => {
+      return normalizePokemonKey(item.pokemonName) === normalizedKey
+    })
+
+    if (hasDuplicate) {
+      return 'duplicate'
+    }
+
+    set((current) => ({
+      chosenPokemons: [
+        ...current.chosenPokemons,
+        {
+          id: nanoid(),
+          pokemonName: normalizedName,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      dataRevision: current.dataRevision + 1,
+    }))
+
+    return 'added'
+  },
+
+  removeChosenPokemon: (id) => {
+    const state = get()
+    if (!state.activeRunId) {
+      return
+    }
+
+    set((current) => ({
+      chosenPokemons: current.chosenPokemons.filter((item) => item.id !== id),
+      dataRevision: current.dataRevision + 1,
+    }))
+  },
+
+  trimChosenPokemons: (limit) => {
+    const state = get()
+    if (!state.activeRunId) {
+      return
+    }
+
+    const normalizedLimit = Math.max(0, Math.floor(limit))
+
+    set((current) => {
+      if (current.chosenPokemons.length <= normalizedLimit) {
+        return current
+      }
+
+      return {
+        chosenPokemons: current.chosenPokemons.slice(0, normalizedLimit),
+        dataRevision: current.dataRevision + 1,
+      }
+    })
+  },
+
+  toggleZoneProgress: (zoneId, field) => {
+    const state = get()
+    if (!state.activeRunId) {
+      return
+    }
+
+    set((current) => {
+      const zone = ROADMAP_ZONE_MAP.get(zoneId)
+
+      if (!zone) {
+        return current
+      }
+
+      const currentProgress =
+        current.zoneProgress[zoneId] ??
+        ({
+          captured: false,
+          completed: false,
+        } satisfies ZoneProgress)
+
+      if (zone.checkpoint === 'leader') {
+        if (field !== 'completed') {
+          return current
+        }
+
+        const completed = !currentProgress.completed
+        const nextZoneProgress = {
+          ...current.zoneProgress,
+          [zoneId]: {
+            captured: false,
+            completed,
+          },
+        }
+
+        const badgeId = LEADER_ZONE_TO_BADGE_MAP[zoneId]
+        const nextBadges = badgeId
+          ? current.badges.map((badge) => {
+              if (badge.id !== badgeId) {
+                return badge
+              }
+
+              return {
+                ...badge,
+                earned: completed,
+              }
+            })
+          : current.badges
+
+        return {
+          zoneProgress: nextZoneProgress,
+          badges: nextBadges,
+          chosenPokemons: clampChosenToCaptureLimit(current.chosenPokemons, nextZoneProgress),
+          dataRevision: current.dataRevision + 1,
+        }
+      }
+
+      const nextProgress = { ...currentProgress }
+
+      if (field === 'captured') {
+        nextProgress.captured = !currentProgress.captured
+      }
+
+      if (field === 'completed') {
+        nextProgress.completed = !currentProgress.completed
+      }
+
+      const nextZoneProgress = {
+        ...current.zoneProgress,
+        [zoneId]: nextProgress,
+      }
+
+      return {
+        zoneProgress: nextZoneProgress,
+        chosenPokemons: clampChosenToCaptureLimit(current.chosenPokemons, nextZoneProgress),
+        dataRevision: current.dataRevision + 1,
+      }
+    })
+  },
+
+  toggleBadge: (badgeId) => {
+    const state = get()
+    if (!state.activeRunId) {
+      return
+    }
+
+    set((current) => {
+      let nextEarned = false
+
+      const nextBadges = current.badges.map((badge) => {
+        if (badge.id !== badgeId) {
+          return badge
+        }
+
+        nextEarned = !badge.earned
+
+        return {
+          ...badge,
+          earned: nextEarned,
+        }
+      })
+
+      const linkedZoneId = BADGE_TO_LEADER_ZONE_MAP[badgeId]
+      if (!linkedZoneId) {
+        return {
+          badges: nextBadges,
+          dataRevision: current.dataRevision + 1,
+        }
+      }
+
+      const currentProgress =
+        current.zoneProgress[linkedZoneId] ??
+        ({
+          captured: false,
+          completed: false,
+        } satisfies ZoneProgress)
+
+      return {
+        badges: nextBadges,
+        zoneProgress: {
+          ...current.zoneProgress,
+          [linkedZoneId]: {
+            ...currentProgress,
+            captured: false,
+            completed: nextEarned,
+          },
+        },
+        dataRevision: current.dataRevision + 1,
+      }
+    })
+  },
+}))

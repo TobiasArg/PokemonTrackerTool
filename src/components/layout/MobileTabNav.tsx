@@ -3,6 +3,10 @@ import { NavLink } from 'react-router-dom'
 
 const NAV_ITEMS = [
   {
+    to: '/runs',
+    label: 'Runs',
+  },
+  {
     to: '/pokemons',
     label: 'Pokémon',
   },

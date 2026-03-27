@@ -1,28 +1,140 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect, type ReactNode } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { MobileTabNav } from './components/layout/MobileTabNav'
 import { PageHeader } from './components/layout/PageHeader'
+import { useAuth } from './hooks/useAuth'
+import { useRuns } from './hooks/useRuns'
+import { AuthPage } from './pages/AuthPage'
 import { BadgesPage } from './pages/BadgesPage'
 import { PokemonPage } from './pages/PokemonPage'
 import { RoadmapPage } from './pages/RoadmapPage'
+import { RunsPage } from './pages/RunsPage'
+
+const RequireActiveRun = ({ activeRunId, children }: { activeRunId: string | null; children: ReactNode }) => {
+  if (!activeRunId) {
+    return <Navigate replace to="/runs" />
+  }
+
+  return <>{children}</>
+}
 
 function App() {
+  const location = useLocation()
+  const { authStatus, isBootstrapped, bootstrap } = useAuth()
+  const {
+    activeRunId,
+    persistActiveRunSnapshot,
+    dataRevision,
+    lastPersistedRevision,
+    isHydratingRunData,
+  } = useRuns()
+
+  useEffect(() => {
+    void bootstrap()
+  }, [bootstrap])
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated') {
+      return
+    }
+
+    if (!activeRunId || isHydratingRunData) {
+      return
+    }
+
+    if (dataRevision <= lastPersistedRevision) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void persistActiveRunSnapshot()
+    }, 500)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    activeRunId,
+    authStatus,
+    dataRevision,
+    isHydratingRunData,
+    lastPersistedRevision,
+    persistActiveRunSnapshot,
+  ])
+
+  if (!isBootstrapped || authStatus === 'loading') {
+    return (
+      <div className="app-loading">
+        <p className="app-loading__label">Sincronizando sistema...</p>
+      </div>
+    )
+  }
+
+  const showHeader = authStatus === 'authenticated'
+  const showNav =
+    authStatus === 'authenticated' &&
+    Boolean(activeRunId) &&
+    ['/pokemons', '/roadmap', '/medallas'].some((path) =>
+      location.pathname.startsWith(path),
+    )
+
   return (
     <div className="app-layout">
-      <div className="page-shell page-shell--header">
-        <PageHeader />
-      </div>
+      {showHeader ? (
+        <div className="page-shell page-shell--header">
+          <PageHeader />
+        </div>
+      ) : null}
 
       <main className="page-shell page-shell--content">
         <Routes>
-          <Route element={<Navigate replace to="/pokemons" />} path="/" />
-          <Route element={<PokemonPage />} path="/pokemons" />
-          <Route element={<RoadmapPage />} path="/roadmap" />
-          <Route element={<BadgesPage />} path="/medallas" />
+          {authStatus !== 'authenticated' ? (
+            <>
+              <Route element={<AuthPage />} path="/auth" />
+              <Route element={<Navigate replace to="/auth" />} path="*" />
+            </>
+          ) : (
+            <>
+              <Route
+                element={
+                  activeRunId ? <Navigate replace to="/pokemons" /> : <Navigate replace to="/runs" />
+                }
+                path="/"
+              />
+              <Route element={<RunsPage />} path="/runs" />
+              <Route
+                element={
+                  <RequireActiveRun activeRunId={activeRunId}>
+                    <PokemonPage />
+                  </RequireActiveRun>
+                }
+                path="/pokemons"
+              />
+              <Route
+                element={
+                  <RequireActiveRun activeRunId={activeRunId}>
+                    <RoadmapPage />
+                  </RequireActiveRun>
+                }
+                path="/roadmap"
+              />
+              <Route
+                element={
+                  <RequireActiveRun activeRunId={activeRunId}>
+                    <BadgesPage />
+                  </RequireActiveRun>
+                }
+                path="/medallas"
+              />
+              <Route element={<Navigate replace to="/" />} path="/auth" />
+              <Route element={<Navigate replace to="/" />} path="*" />
+            </>
+          )}
         </Routes>
       </main>
 
-      <MobileTabNav />
+      {showNav ? <MobileTabNav /> : null}
     </div>
   )
 }
