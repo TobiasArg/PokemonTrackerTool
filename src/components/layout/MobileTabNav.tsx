@@ -1,7 +1,8 @@
 import clsx from 'clsx'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
 
-const NAV_ITEMS = [
+const AUTH_NAV_ITEMS = [
   {
     to: '/runs',
     label: 'Runs',
@@ -20,10 +21,19 @@ const NAV_ITEMS = [
   },
 ]
 
+const GUEST_NAV_ITEMS = AUTH_NAV_ITEMS.filter((item) => item.to !== '/runs')
+
 export const MobileTabNav = () => {
+  const { authStatus } = useAuth()
+  const navItems = authStatus === 'authenticated' ? AUTH_NAV_ITEMS : GUEST_NAV_ITEMS
+
   return (
-    <nav aria-label="Navegación principal" className="mobile-tab-nav">
-      {NAV_ITEMS.map((item) => {
+    <nav
+      aria-label="Navegación principal"
+      className="mobile-tab-nav"
+      style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
+    >
+      {navItems.map((item) => {
         return (
           <NavLink
             className={({ isActive }) =>

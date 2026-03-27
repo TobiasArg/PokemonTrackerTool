@@ -4,6 +4,7 @@ import { useChosenPokemon } from '../../hooks/useChosenPokemon'
 import { useRoadmap } from '../../hooks/useRoadmap'
 import type { AddChosenPokemonResult } from '../../hooks/useNuzlockeStore'
 import { ActionButton } from '../atomic/ActionButton'
+import { EmptyState } from '../atomic/EmptyState'
 import { Modal } from '../atomic/Modal'
 import { Panel } from '../atomic/Panel'
 import { TextField } from '../atomic/TextField'
@@ -98,8 +99,8 @@ export const ChosenPokemonModule = ({ compact = false }: ChosenPokemonModuleProp
 
         <div className="module-toolbar">
           <div className="module-toolbar__meta">
-            <p className="module-toolbar__kicker">Equipo</p>
-            <p className="module-toolbar__info">{selectedCount}/{captureLimit} slots usados</p>
+            <p className="module-toolbar__kicker">Control de Equipo</p>
+            <p className="module-toolbar__info">{selectedCount}/{captureLimit} slots en uso</p>
           </div>
           <ActionButton
             disabled={!canRegister}
@@ -111,11 +112,15 @@ export const ChosenPokemonModule = ({ compact = false }: ChosenPokemonModuleProp
         </div>
 
         {!captureLimit ? (
-          <p className="empty-state">Sin capturas marcadas en roadmap.</p>
-        ) : null}
-
-        {!chosenPokemons.length ? (
-          <p className="empty-state">Sin Pokémon elegidos.</p>
+          <EmptyState
+            hint="Marca al menos una captura en Roadmap para habilitar cupos de equipo."
+            title="SIN CUPOS DISPONIBLES"
+          />
+        ) : !chosenPokemons.length ? (
+          <EmptyState
+            hint="Usa “Registrar elegido” para cargar tu primer miembro del team."
+            title="EQUIPO VACÍO"
+          />
         ) : (
           <div className="chosen-grid">
             {chosenPokemons.map((pokemon) => {

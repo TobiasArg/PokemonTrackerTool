@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { Panel } from '../atomic/Panel'
 import { useRoadmap } from '../../hooks/useRoadmap'
 import { ActionButton } from '../atomic/ActionButton'
+import { EmptyState } from '../atomic/EmptyState'
 import { RoadmapRow } from './RoadmapRow'
 
 type CaptureFilter = 'all' | 'captured' | 'uncaptured'
@@ -172,10 +173,10 @@ export const RoadmapModule = () => {
       title="Módulo Roadmap"
     >
       <div className="roadmap-sticky-head">
-        <div className="roadmap-sticky-head__top">
-          <div className="roadmap-sticky-head__text">
-            <p className="roadmap-sticky-head__label">Run progress</p>
-            <p className="roadmap-sticky-head__value">
+        <div className="module-toolbar module-toolbar--roadmap">
+          <div className="module-toolbar__meta">
+            <p className="module-toolbar__kicker">Control de Ruta</p>
+            <p className="module-toolbar__info">
               {summary.doneChecks}/{summary.totalChecks} checks · {summary.completionRate}%
             </p>
           </div>
@@ -270,24 +271,36 @@ export const RoadmapModule = () => {
       </div>
 
       {!filteredZones.length ? (
-        <p className="empty-state">No hay zonas para el filtro seleccionado.</p>
+        <EmptyState
+          hint="Cambia el filtro de captura para volver a ver checkpoints."
+          title="FILTRO SIN RESULTADOS"
+        />
       ) : (
-        <ul className="roadmap-list">
-          {filteredZones.map((zone) => {
-            const progress = zoneProgress[zone.id] ?? EMPTY_PROGRESS
+        <div
+          className="roadmap-timeline"
+          style={
+            {
+              '--roadmap-timeline-progress': `${summary.completionRate}%`,
+            } as CSSProperties
+          }
+        >
+          <ul className="roadmap-list">
+            {filteredZones.map((zone) => {
+              const progress = zoneProgress[zone.id] ?? EMPTY_PROGRESS
 
-            return (
-              <RoadmapRow
-                key={zone.id}
-                isFocused={focusedZoneId === zone.id}
-                isHighlighted={highlightedZoneId === zone.id}
-                onToggle={handleToggle}
-                progress={progress}
-                zone={zone}
-              />
-            )
-          })}
-        </ul>
+              return (
+                <RoadmapRow
+                  key={zone.id}
+                  isFocused={focusedZoneId === zone.id}
+                  isHighlighted={highlightedZoneId === zone.id}
+                  onToggle={handleToggle}
+                  progress={progress}
+                  zone={zone}
+                />
+              )
+            })}
+          </ul>
+        </div>
       )}
     </Panel>
   )

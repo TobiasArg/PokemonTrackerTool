@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 
 import { useFallenPokemon } from '../../hooks/useFallenPokemon'
 import { ActionButton } from '../atomic/ActionButton'
+import { EmptyState } from '../atomic/EmptyState'
 import { Modal } from '../atomic/Modal'
 import { Panel } from '../atomic/Panel'
 import { TextField } from '../atomic/TextField'
@@ -80,8 +81,8 @@ export const FallenPokemonModule = ({ compact = false }: FallenPokemonModuleProp
       >
         <div className="module-toolbar">
           <div className="module-toolbar__meta">
-            <p className="module-toolbar__kicker">Registro</p>
-            <p className="module-toolbar__info">{fallenPokemons.length} caídos cargados</p>
+            <p className="module-toolbar__kicker">Bitácora de Bajas</p>
+            <p className="module-toolbar__info">{fallenPokemons.length} registros de caída</p>
           </div>
           <ActionButton onClick={openRegisterModal} variant="secondary">
             Registrar caída
@@ -89,7 +90,10 @@ export const FallenPokemonModule = ({ compact = false }: FallenPokemonModuleProp
         </div>
 
         {!fallenPokemons.length ? (
-          <p className="empty-state">Sin Pokémon caídos.</p>
+          <EmptyState
+            hint="Cuando ocurra una baja, regístrala para mantener la run consistente."
+            title="SIN BAJAS REGISTRADAS"
+          />
         ) : (
           <div className="fallen-grid">
             {fallenPokemons.map((pokemon) => {

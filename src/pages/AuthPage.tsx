@@ -19,6 +19,12 @@ export const AuthPage = () => {
     setLoading(true)
     setError(null)
 
+    if (!isSupabaseConfigured) {
+      setError(SUPABASE_CONFIG_ERROR)
+      setLoading(false)
+      return
+    }
+
     const action = mode === 'login' ? signIn : signUp
     const result = await action(email, password)
 
@@ -66,7 +72,6 @@ export const AuthPage = () => {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <TextField
-            disabled={!isSupabaseConfigured}
             id="auth-email"
             label="Email"
             onChange={(event) => setEmail(event.target.value)}
@@ -77,7 +82,6 @@ export const AuthPage = () => {
           />
 
           <TextField
-            disabled={!isSupabaseConfigured}
             id="auth-password"
             label="Contraseña"
             minLength={6}
@@ -88,12 +92,12 @@ export const AuthPage = () => {
             value={password}
           />
 
-          {!isSupabaseConfigured ? (
+          {!isSupabaseConfigured && !error ? (
             <p className="modal-form__error">{SUPABASE_CONFIG_ERROR}</p>
           ) : null}
           {error ? <p className="modal-form__error">{error}</p> : null}
 
-          <ActionButton disabled={loading || !isSupabaseConfigured} type="submit" variant="secondary">
+          <ActionButton disabled={loading} type="submit" variant="secondary">
             {loading
               ? 'Procesando...'
               : mode === 'login'
