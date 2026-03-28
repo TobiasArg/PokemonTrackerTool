@@ -48,6 +48,7 @@ export const RoadmapRow = ({
               <span className="roadmap-check__label">Superado</span>
               <input
                 checked={progress.completed}
+                disabled={progress.completed}
                 id={`${zone.id}-completed`}
                 onChange={() => onToggle(zone.id, 'completed')}
                 type="checkbox"

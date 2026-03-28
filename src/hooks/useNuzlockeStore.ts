@@ -264,16 +264,33 @@ const sanitizeDomainState = (domain: DomainState): DomainState => {
     }
   }
 
-  const mergedBadges = syncLeaderBadgesWithProgress(
-    INITIAL_BADGES.map((badge) => {
-      const candidate = domain.badges?.find((item) => item.id === badge.id)
-      return {
-        ...badge,
-        earned: candidate ? Boolean(candidate.earned) : badge.earned,
-      }
-    }),
-    mergedZoneProgress,
-  )
+  const hydratedBadges = INITIAL_BADGES.map((badge) => {
+    const candidate = domain.badges?.find((item) => item.id === badge.id)
+    return {
+      ...badge,
+      earned: candidate ? Boolean(candidate.earned) : badge.earned,
+    }
+  })
+
+  // Badge history is irreversible: if a badge appears as earned, the linked leader stays completed.
+  for (const badge of hydratedBadges) {
+    if (!badge.earned) {
+      continue
+    }
+
+    const linkedZoneId = BADGE_TO_LEADER_ZONE_MAP[badge.id]
+    if (!linkedZoneId) {
+      continue
+    }
+
+    const currentProgress = mergedZoneProgress[linkedZoneId]
+    mergedZoneProgress[linkedZoneId] = {
+      captured: false,
+      completed: Boolean(currentProgress?.completed || badge.earned),
+    }
+  }
+
+  const mergedBadges = syncLeaderBadgesWithProgress(hydratedBadges, mergedZoneProgress)
 
   const mergedFallenPokemons = (domain.fallenPokemons ?? [])
     .filter((candidate): candidate is FallenPokemon => {
@@ -941,7 +958,11 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
           return current
         }
 
-        const completed = !currentProgress.completed
+        if (currentProgress.completed) {
+          return current
+        }
+
+        const completed = true
         const nextZoneProgress = {
           ...current.zoneProgress,
           [zoneId]: {
@@ -1002,20 +1023,28 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
     }
 
     set((current) => {
-      let nextEarned = false
+      let hasActivation = false
 
       const nextBadges = current.badges.map((badge) => {
         if (badge.id !== badgeId) {
           return badge
         }
 
-        nextEarned = !badge.earned
+        if (badge.earned) {
+          return badge
+        }
+
+        hasActivation = true
 
         return {
           ...badge,
-          earned: nextEarned,
+          earned: true,
         }
       })
+
+      if (!hasActivation) {
+        return current
+      }
 
       const linkedZoneId = BADGE_TO_LEADER_ZONE_MAP[badgeId]
       if (!linkedZoneId) {
@@ -1039,7 +1068,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
           [linkedZoneId]: {
             ...currentProgress,
             captured: false,
-            completed: nextEarned,
+            completed: true,
           },
         },
         dataRevision: current.dataRevision + 1,
