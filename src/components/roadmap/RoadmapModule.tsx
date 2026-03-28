@@ -169,139 +169,141 @@ export const RoadmapModule = () => {
   return (
     <Panel
       className="roadmap-panel"
-      description="Checkpoints de captura/completado por zona, y superado para líderes."
-      title="Módulo Roadmap"
+      hideHeader
+      title="Roadmap"
     >
-      <div className="roadmap-sticky-head">
-        <div className="module-toolbar module-toolbar--roadmap">
-          <div className="module-toolbar__meta">
-            <p className="module-toolbar__kicker">Control de Ruta</p>
-            <p className="module-toolbar__info">
-              {summary.doneChecks}/{summary.totalChecks} checks · {summary.completionRate}%
-            </p>
+      <div className="roadmap-shell">
+        <div className="roadmap-control">
+          <div className="roadmap-control__top">
+            <div className="roadmap-control__meta">
+              <p className="roadmap-control__kicker">Control de Ruta</p>
+              <p className="roadmap-control__value">
+                {summary.doneChecks}/{summary.totalChecks} checks · {summary.completionRate}%
+              </p>
+            </div>
+            <ActionButton
+              disabled={!nextPendingZone}
+              onClick={jumpToNextPending}
+              variant="secondary"
+            >
+              Siguiente pendiente
+            </ActionButton>
           </div>
-          <ActionButton
-            disabled={!nextPendingZone}
-            onClick={jumpToNextPending}
-            variant="secondary"
+
+          <div
+            aria-label={`Progreso total ${summary.completionRate}%`}
+            className="roadmap-progress"
+            role="progressbar"
+            aria-valuemax={100}
+            aria-valuemin={0}
+            aria-valuenow={summary.completionRate}
           >
-            Siguiente pendiente
-          </ActionButton>
+            <span
+              className="roadmap-progress__fill"
+              style={{ width: `${summary.completionRate}%` }}
+            />
+          </div>
+
+          <div
+            aria-label="Filtro por captura"
+            className="roadmap-capture-filters"
+            role="group"
+          >
+            <button
+              className={`roadmap-capture-filters__button ${
+                captureFilter === 'all' ? 'roadmap-capture-filters__button--active' : ''
+              }`}
+              aria-pressed={captureFilter === 'all'}
+              onClick={() => setCaptureFilter('all')}
+              type="button"
+            >
+              Todo
+            </button>
+            <button
+              className={`roadmap-capture-filters__button ${
+                captureFilter === 'captured' ? 'roadmap-capture-filters__button--active' : ''
+              }`}
+              aria-pressed={captureFilter === 'captured'}
+              onClick={() => setCaptureFilter('captured')}
+              type="button"
+            >
+              Con captura
+            </button>
+            <button
+              className={`roadmap-capture-filters__button ${
+                captureFilter === 'uncaptured'
+                  ? 'roadmap-capture-filters__button--active'
+                  : ''
+              }`}
+              aria-pressed={captureFilter === 'uncaptured'}
+              onClick={() => setCaptureFilter('uncaptured')}
+              type="button"
+            >
+              Sin captura
+            </button>
+          </div>
+
+          <p aria-live="polite" className="roadmap-live-feedback" role="status">
+            {feedbackMessage ?? 'Marca avances y usa “Siguiente pendiente” para mantener el ritmo.'}
+          </p>
+
+          <div className="roadmap-summary">
+            <article className="summary-item">
+              <p className="summary-item__label">Checkpoints</p>
+              <p className="summary-item__value">{summary.totalEntries}</p>
+            </article>
+            <article className="summary-item">
+              <p className="summary-item__label">Capturas</p>
+              <p className="summary-item__value">
+                {summary.captured}/{summary.totalCaptureZones}
+              </p>
+            </article>
+            <article className="summary-item">
+              <p className="summary-item__label">Sin captura</p>
+              <p className="summary-item__value">{summary.uncaptured}</p>
+            </article>
+            <article className="summary-item">
+              <p className="summary-item__label">Líderes</p>
+              <p className="summary-item__value">
+                {summary.leadersDefeated}/{summary.totalLeaders}
+              </p>
+            </article>
+          </div>
         </div>
 
-        <div
-          aria-label={`Progreso total ${summary.completionRate}%`}
-          className="roadmap-progress"
-          role="progressbar"
-          aria-valuemax={100}
-          aria-valuemin={0}
-          aria-valuenow={summary.completionRate}
-        >
-          <span
-            className="roadmap-progress__fill"
-            style={{ width: `${summary.completionRate}%` }}
+        {!filteredZones.length ? (
+          <EmptyState
+            hint="Cambia el filtro de captura para volver a ver checkpoints."
+            title="FILTRO SIN RESULTADOS"
           />
-        </div>
+        ) : (
+          <div
+            className="roadmap-timeline"
+            style={
+              {
+                '--roadmap-timeline-progress': `${summary.completionRate}%`,
+              } as CSSProperties
+            }
+          >
+            <ul className="roadmap-list">
+              {filteredZones.map((zone) => {
+                const progress = zoneProgress[zone.id] ?? EMPTY_PROGRESS
 
-        <div
-          aria-label="Filtro por captura"
-          className="roadmap-capture-filters"
-          role="group"
-        >
-          <button
-            className={`roadmap-capture-filters__button ${
-              captureFilter === 'all' ? 'roadmap-capture-filters__button--active' : ''
-            }`}
-            aria-pressed={captureFilter === 'all'}
-            onClick={() => setCaptureFilter('all')}
-            type="button"
-          >
-            Todo
-          </button>
-          <button
-            className={`roadmap-capture-filters__button ${
-              captureFilter === 'captured' ? 'roadmap-capture-filters__button--active' : ''
-            }`}
-            aria-pressed={captureFilter === 'captured'}
-            onClick={() => setCaptureFilter('captured')}
-            type="button"
-          >
-            Con captura
-          </button>
-          <button
-            className={`roadmap-capture-filters__button ${
-              captureFilter === 'uncaptured'
-                ? 'roadmap-capture-filters__button--active'
-                : ''
-            }`}
-            aria-pressed={captureFilter === 'uncaptured'}
-            onClick={() => setCaptureFilter('uncaptured')}
-            type="button"
-          >
-            Sin captura
-          </button>
-        </div>
-
-        <p aria-live="polite" className="roadmap-live-feedback" role="status">
-          {feedbackMessage ?? 'Marca avances y usa “Siguiente pendiente” para mantener el ritmo.'}
-        </p>
+                return (
+                  <RoadmapRow
+                    key={zone.id}
+                    isFocused={focusedZoneId === zone.id}
+                    isHighlighted={highlightedZoneId === zone.id}
+                    onToggle={handleToggle}
+                    progress={progress}
+                    zone={zone}
+                  />
+                )
+              })}
+            </ul>
+          </div>
+        )}
       </div>
-
-      <div className="roadmap-summary">
-        <article className="summary-item">
-          <p className="summary-item__label">Checkpoints</p>
-          <p className="summary-item__value">{summary.totalEntries}</p>
-        </article>
-        <article className="summary-item">
-          <p className="summary-item__label">Capturas</p>
-          <p className="summary-item__value">
-            {summary.captured}/{summary.totalCaptureZones}
-          </p>
-        </article>
-        <article className="summary-item">
-          <p className="summary-item__label">Sin captura</p>
-          <p className="summary-item__value">{summary.uncaptured}</p>
-        </article>
-        <article className="summary-item">
-          <p className="summary-item__label">Líderes</p>
-          <p className="summary-item__value">
-            {summary.leadersDefeated}/{summary.totalLeaders}
-          </p>
-        </article>
-      </div>
-
-      {!filteredZones.length ? (
-        <EmptyState
-          hint="Cambia el filtro de captura para volver a ver checkpoints."
-          title="FILTRO SIN RESULTADOS"
-        />
-      ) : (
-        <div
-          className="roadmap-timeline"
-          style={
-            {
-              '--roadmap-timeline-progress': `${summary.completionRate}%`,
-            } as CSSProperties
-          }
-        >
-          <ul className="roadmap-list">
-            {filteredZones.map((zone) => {
-              const progress = zoneProgress[zone.id] ?? EMPTY_PROGRESS
-
-              return (
-                <RoadmapRow
-                  key={zone.id}
-                  isFocused={focusedZoneId === zone.id}
-                  isHighlighted={highlightedZoneId === zone.id}
-                  onToggle={handleToggle}
-                  progress={progress}
-                  zone={zone}
-                />
-              )
-            })}
-          </ul>
-        </div>
-      )}
     </Panel>
   )
 }

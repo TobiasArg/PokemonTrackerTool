@@ -16,6 +16,12 @@ type SnapshotPayload = {
   fallenPokemons: FallenPokemonSnapshotItem[]
 }
 
+const toSqlInList = (ids: string[]): string => {
+  return `(${ids
+    .map((id) => `"${id.replaceAll('"', '""')}"`)
+    .join(',')})`
+}
+
 type ZoneProgressRow = {
   zone_id: string
   captured: boolean
@@ -199,15 +205,6 @@ export const snapshotService = {
       }
     }
 
-    const { error: deleteChosenError } = await supabase
-      .from('run_chosen_pokemon')
-      .delete()
-      .eq('run_id', runId)
-
-    if (deleteChosenError) {
-      throw new Error(deleteChosenError.message)
-    }
-
     if (payload.chosenPokemons.length > 0) {
       const chosenRows = payload.chosenPokemons.map((pokemon) => ({
         id: pokemon.id,
@@ -217,22 +214,28 @@ export const snapshotService = {
         created_at: pokemon.createdAt,
       }))
 
-      const { error: insertChosenError } = await supabase
+      const { error: upsertChosenError } = await supabase
         .from('run_chosen_pokemon')
-        .insert(chosenRows)
+        .upsert(chosenRows, { onConflict: 'id' })
 
-      if (insertChosenError) {
-        throw new Error(insertChosenError.message)
+      if (upsertChosenError) {
+        throw new Error(upsertChosenError.message)
       }
     }
 
-    const { error: deleteFallenError } = await supabase
-      .from('run_fallen_pokemon')
+    const chosenIds = payload.chosenPokemons.map((pokemon) => pokemon.id)
+    const staleChosenQuery = supabase
+      .from('run_chosen_pokemon')
       .delete()
       .eq('run_id', runId)
 
-    if (deleteFallenError) {
-      throw new Error(deleteFallenError.message)
+    const { error: deleteStaleChosenError } =
+      chosenIds.length > 0
+        ? await staleChosenQuery.not('id', 'in', toSqlInList(chosenIds))
+        : await staleChosenQuery
+
+    if (deleteStaleChosenError) {
+      throw new Error(deleteStaleChosenError.message)
     }
 
     if (payload.fallenPokemons.length > 0) {
@@ -247,13 +250,28 @@ export const snapshotService = {
         created_at: pokemon.createdAt,
       }))
 
-      const { error: insertFallenError } = await supabase
+      const { error: upsertFallenError } = await supabase
         .from('run_fallen_pokemon')
-        .insert(fallenRows)
+        .upsert(fallenRows, { onConflict: 'id' })
 
-      if (insertFallenError) {
-        throw new Error(insertFallenError.message)
+      if (upsertFallenError) {
+        throw new Error(upsertFallenError.message)
       }
+    }
+
+    const fallenIds = payload.fallenPokemons.map((pokemon) => pokemon.id)
+    const staleFallenQuery = supabase
+      .from('run_fallen_pokemon')
+      .delete()
+      .eq('run_id', runId)
+
+    const { error: deleteStaleFallenError } =
+      fallenIds.length > 0
+        ? await staleFallenQuery.not('id', 'in', toSqlInList(fallenIds))
+        : await staleFallenQuery
+
+    if (deleteStaleFallenError) {
+      throw new Error(deleteStaleFallenError.message)
     }
   },
 }

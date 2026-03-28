@@ -28,6 +28,7 @@ function App() {
     dataRevision,
     lastPersistedRevision,
     isHydratingRunData,
+    syncStatus,
   } = useRuns()
 
   useEffect(() => {
@@ -47,9 +48,15 @@ function App() {
       return
     }
 
+    if (syncStatus === 'saving') {
+      return
+    }
+
+    const persistDelay = syncStatus === 'error' ? 2500 : 500
+
     const timeoutId = window.setTimeout(() => {
       void persistActiveRunSnapshot()
-    }, 500)
+    }, persistDelay)
 
     return () => {
       window.clearTimeout(timeoutId)
@@ -61,6 +68,7 @@ function App() {
     isHydratingRunData,
     lastPersistedRevision,
     persistActiveRunSnapshot,
+    syncStatus,
   ])
 
   if (!isBootstrapped || authStatus === 'loading') {

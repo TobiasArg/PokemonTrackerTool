@@ -30,7 +30,12 @@ export const BadgeToken = ({
         'badge-token--off': !isEarned,
         'badge-token--activating': isActivating,
       })}
-      onClick={() => onActivate(badge)}
+      disabled={isEarned}
+      onClick={() => {
+        if (!isEarned) {
+          onActivate(badge)
+        }
+      }}
       type="button"
     >
       <span aria-hidden="true" className="badge-token__index">
