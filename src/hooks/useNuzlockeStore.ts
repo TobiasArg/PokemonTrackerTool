@@ -1,5 +1,4 @@
 import type { Session } from '@supabase/supabase-js'
-import { nanoid } from 'nanoid'
 import { create } from 'zustand'
 
 import { authService } from '../services/authService'
@@ -183,6 +182,30 @@ const sanitizeLevel = (value: number): number => {
   return Math.max(1, Math.min(100, Math.floor(value)))
 }
 
+const UUID_V4_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const isUuid = (value: string): boolean => {
+  return UUID_V4_PATTERN.test(value)
+}
+
+const generateId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `fallback-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const ensureUuid = (value: string | null | undefined): string => {
+  if (!value) {
+    return generateId()
+  }
+
+  const trimmed = value.trim()
+  return isUuid(trimmed) ? trimmed : generateId()
+}
+
 const getActiveRunStorageKey = (userId: string): string => {
   return `${ACTIVE_RUN_STORAGE_PREFIX}${userId}`
 }
@@ -303,7 +326,7 @@ const sanitizeDomainState = (domain: DomainState): DomainState => {
       )
     })
     .map((candidate) => ({
-      id: candidate.id,
+      id: ensureUuid(candidate.id),
       name: sanitizeNonEmpty(candidate.name),
       level: sanitizeLevel(candidate.level),
       captureZone: sanitizeNonEmpty(candidate.captureZone),
@@ -321,7 +344,7 @@ const sanitizeDomainState = (domain: DomainState): DomainState => {
       return Boolean(candidate?.id && candidate?.pokemonName && candidate?.createdAt)
     })
     .map((candidate) => ({
-      id: candidate.id,
+      id: ensureUuid(candidate.id),
       pokemonName: sanitizeNonEmpty(candidate.pokemonName),
       createdAt: candidate.createdAt,
     }))
@@ -427,59 +450,13 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
   bootstrap: async () => {
     set({ authStatus: 'loading', syncError: null })
 
+    let session: Session | null = null
+    let userSession: UserSession | null = null
     try {
-      const session = await authService.getSession()
-      const userSession = toUserSession(session)
-
-      if (!session || !userSession) {
-        set({
-          ...createInitialDomainState(),
-          authStatus: 'unauthenticated',
-          isBootstrapped: true,
-          session: null,
-          rawSession: null,
-          runs: [],
-          activeRunId: null,
-          syncStatus: 'idle',
-          syncError: null,
-          isHydratingRunData: false,
-          dataRevision: 0,
-          lastPersistedRevision: 0,
-        })
-        return
-      }
-
-      set({
-        authStatus: 'authenticated',
-        session: userSession,
-        rawSession: session,
-      })
-
-      await get().loadRuns()
-      await get().migrateLegacyLocalState()
-      await get().loadRuns()
-
-      let nextRuns = get().runs
-      if (nextRuns.length === 0) {
-        const created = await get().createRun('Mi primera run')
-        if (created) {
-          nextRuns = [created]
-        }
-      }
-
-      if (nextRuns.length === 0) {
-        set({ isBootstrapped: true, syncStatus: 'idle' })
-        return
-      }
-
-      const preferredRunId = getStoredActiveRunId(userSession.userId)
-      const chosenRun = nextRuns.find((run) => run.id === preferredRunId) ?? nextRuns[0]
-
-      await get().setActiveRun(chosenRun.id)
-
-      set({ isBootstrapped: true })
+      session = await authService.getSession()
+      userSession = toUserSession(session)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo iniciar la app.'
+      const message = error instanceof Error ? error.message : 'No se pudo validar la sesión.'
       set({
         ...createInitialDomainState(),
         authStatus: 'unauthenticated',
@@ -488,6 +465,90 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
         rawSession: null,
         runs: [],
         activeRunId: null,
+        syncStatus: 'error',
+        syncError: message,
+        isHydratingRunData: false,
+        dataRevision: 0,
+        lastPersistedRevision: 0,
+      })
+      return
+    }
+
+    if (!session || !userSession) {
+      set({
+        ...createInitialDomainState(),
+        authStatus: 'unauthenticated',
+        isBootstrapped: true,
+        session: null,
+        rawSession: null,
+        runs: [],
+        activeRunId: null,
+        syncStatus: 'idle',
+        syncError: null,
+        isHydratingRunData: false,
+        dataRevision: 0,
+        lastPersistedRevision: 0,
+      })
+      return
+    }
+
+    set({
+      authStatus: 'authenticated',
+      session: userSession,
+      rawSession: session,
+    })
+
+    try {
+      await get().loadRuns()
+      await get().migrateLegacyLocalState()
+      await get().loadRuns()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudieron cargar tus runs.'
+      set({
+        isBootstrapped: true,
+        syncStatus: 'error',
+        syncError: message,
+      })
+      return
+    }
+
+    let nextRuns = get().runs
+    if (nextRuns.length === 0) {
+      try {
+        const created = await get().createRun('Mi primera run')
+        if (created) {
+          nextRuns = [created]
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'No se pudo crear la run inicial.'
+        set({
+          isBootstrapped: true,
+          syncStatus: 'error',
+          syncError: message,
+        })
+        return
+      }
+    }
+
+    if (nextRuns.length === 0) {
+      set({ isBootstrapped: true, syncStatus: 'idle' })
+      return
+    }
+
+    const preferredRunId = getStoredActiveRunId(userSession.userId)
+    const chosenRun = nextRuns.find((run) => run.id === preferredRunId) ?? nextRuns[0]
+
+    try {
+      await get().setActiveRun(chosenRun.id)
+      set({ isBootstrapped: true })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo abrir la run activa.'
+      set({
+        isBootstrapped: true,
+        activeRunId: chosenRun.id,
         syncStatus: 'error',
         syncError: message,
       })
@@ -738,12 +799,19 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
       }
 
       set({
-        rawSession: session,
-        session: toUserSession(session),
-        authStatus: 'authenticated',
+        authStatus: 'loading',
+        syncError: null,
       })
 
       await get().bootstrap()
+      const nextState = get()
+      if (nextState.authStatus !== 'authenticated') {
+        return {
+          ok: false,
+          error: nextState.syncError ?? 'No se pudo iniciar la sesión en la app.',
+        } as const
+      }
+
       return { ok: true } as const
     } catch (error) {
       return {
@@ -765,12 +833,19 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
       }
 
       set({
-        rawSession: session,
-        session: toUserSession(session),
-        authStatus: 'authenticated',
+        authStatus: 'loading',
+        syncError: null,
       })
 
       await get().bootstrap()
+      const nextState = get()
+      if (nextState.authStatus !== 'authenticated') {
+        return {
+          ok: false,
+          error: nextState.syncError ?? 'No se pudo completar el registro.',
+        } as const
+      }
+
       return { ok: true } as const
     } catch (error) {
       return {
@@ -822,7 +897,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
     set((current) => ({
       fallenPokemons: [
         {
-          id: nanoid(),
+          id: generateId(),
           name,
           level: sanitizeLevel(payload.level),
           captureZone,
@@ -890,7 +965,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
       chosenPokemons: [
         ...current.chosenPokemons,
         {
-          id: nanoid(),
+          id: generateId(),
           pokemonName: normalizedName,
           createdAt: new Date().toISOString(),
         },

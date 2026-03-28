@@ -16,12 +16,6 @@ type SnapshotPayload = {
   fallenPokemons: FallenPokemonSnapshotItem[]
 }
 
-const toSqlInList = (ids: string[]): string => {
-  return `(${ids
-    .map((id) => `"${id.replaceAll('"', '""')}"`)
-    .join(',')})`
-}
-
 type ZoneProgressRow = {
   zone_id: string
   captured: boolean
@@ -46,6 +40,10 @@ type FallenRow = {
   capture_zone: string
   cause: string
   created_at: string
+}
+
+type IdRow = {
+  id: string
 }
 
 type RunRow = {
@@ -223,19 +221,30 @@ export const snapshotService = {
       }
     }
 
-    const chosenIds = payload.chosenPokemons.map((pokemon) => pokemon.id)
-    const staleChosenQuery = supabase
+    const chosenIds = new Set(payload.chosenPokemons.map((pokemon) => pokemon.id))
+    const { data: existingChosenRows, error: existingChosenError } = await supabase
       .from('run_chosen_pokemon')
-      .delete()
+      .select('id')
       .eq('run_id', runId)
 
-    const { error: deleteStaleChosenError } =
-      chosenIds.length > 0
-        ? await staleChosenQuery.not('id', 'in', toSqlInList(chosenIds))
-        : await staleChosenQuery
+    if (existingChosenError) {
+      throw new Error(existingChosenError.message)
+    }
 
-    if (deleteStaleChosenError) {
-      throw new Error(deleteStaleChosenError.message)
+    const staleChosenIds = (existingChosenRows ?? [])
+      .map((row) => (row as IdRow).id)
+      .filter((id) => !chosenIds.has(id))
+
+    if (staleChosenIds.length > 0) {
+      const { error: deleteStaleChosenError } = await supabase
+        .from('run_chosen_pokemon')
+        .delete()
+        .eq('run_id', runId)
+        .in('id', staleChosenIds)
+
+      if (deleteStaleChosenError) {
+        throw new Error(deleteStaleChosenError.message)
+      }
     }
 
     if (payload.fallenPokemons.length > 0) {
@@ -259,19 +268,30 @@ export const snapshotService = {
       }
     }
 
-    const fallenIds = payload.fallenPokemons.map((pokemon) => pokemon.id)
-    const staleFallenQuery = supabase
+    const fallenIds = new Set(payload.fallenPokemons.map((pokemon) => pokemon.id))
+    const { data: existingFallenRows, error: existingFallenError } = await supabase
       .from('run_fallen_pokemon')
-      .delete()
+      .select('id')
       .eq('run_id', runId)
 
-    const { error: deleteStaleFallenError } =
-      fallenIds.length > 0
-        ? await staleFallenQuery.not('id', 'in', toSqlInList(fallenIds))
-        : await staleFallenQuery
+    if (existingFallenError) {
+      throw new Error(existingFallenError.message)
+    }
 
-    if (deleteStaleFallenError) {
-      throw new Error(deleteStaleFallenError.message)
+    const staleFallenIds = (existingFallenRows ?? [])
+      .map((row) => (row as IdRow).id)
+      .filter((id) => !fallenIds.has(id))
+
+    if (staleFallenIds.length > 0) {
+      const { error: deleteStaleFallenError } = await supabase
+        .from('run_fallen_pokemon')
+        .delete()
+        .eq('run_id', runId)
+        .in('id', staleFallenIds)
+
+      if (deleteStaleFallenError) {
+        throw new Error(deleteStaleFallenError.message)
+      }
     }
   },
 }

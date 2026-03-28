@@ -24,7 +24,15 @@ export const RunsPage = () => {
   const [isCreating, setIsCreating] = useState(false)
 
   useEffect(() => {
-    void loadRuns()
+    void (async () => {
+      try {
+        await loadRuns()
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error ? loadError.message : 'No se pudieron cargar las runs.',
+        )
+      }
+    })()
   }, [loadRuns])
 
   const sortedRuns = useMemo(() => {

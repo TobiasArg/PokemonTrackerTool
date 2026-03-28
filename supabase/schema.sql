@@ -96,21 +96,34 @@ alter table public.run_badges enable row level security;
 alter table public.run_chosen_pokemon enable row level security;
 alter table public.run_fallen_pokemon enable row level security;
 
+-- Grants (requeridos para que RLS pueda evaluar permisos de acceso desde el cliente)
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on table public.runs to anon, authenticated;
+grant select, insert, update, delete on table public.run_zone_progress to anon, authenticated;
+grant select, insert, update, delete on table public.run_badges to anon, authenticated;
+grant select, insert, update, delete on table public.run_chosen_pokemon to anon, authenticated;
+grant select, insert, update, delete on table public.run_fallen_pokemon to anon, authenticated;
+
 -- Runs: owner only
-create policy if not exists runs_owner_select on public.runs
+drop policy if exists runs_owner_select on public.runs;
+create policy runs_owner_select on public.runs
 for select using (owner_id = auth.uid());
 
-create policy if not exists runs_owner_insert on public.runs
+drop policy if exists runs_owner_insert on public.runs;
+create policy runs_owner_insert on public.runs
 for insert with check (owner_id = auth.uid());
 
-create policy if not exists runs_owner_update on public.runs
+drop policy if exists runs_owner_update on public.runs;
+create policy runs_owner_update on public.runs
 for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
-create policy if not exists runs_owner_delete on public.runs
+drop policy if exists runs_owner_delete on public.runs;
+create policy runs_owner_delete on public.runs
 for delete using (owner_id = auth.uid());
 
 -- Child tables: access only if run belongs to user
-create policy if not exists run_zone_progress_owner_all on public.run_zone_progress
+drop policy if exists run_zone_progress_owner_all on public.run_zone_progress;
+create policy run_zone_progress_owner_all on public.run_zone_progress
 for all using (
   exists (
     select 1 from public.runs r
@@ -126,7 +139,8 @@ with check (
   )
 );
 
-create policy if not exists run_badges_owner_all on public.run_badges
+drop policy if exists run_badges_owner_all on public.run_badges;
+create policy run_badges_owner_all on public.run_badges
 for all using (
   exists (
     select 1 from public.runs r
@@ -142,7 +156,8 @@ with check (
   )
 );
 
-create policy if not exists run_chosen_pokemon_owner_all on public.run_chosen_pokemon
+drop policy if exists run_chosen_pokemon_owner_all on public.run_chosen_pokemon;
+create policy run_chosen_pokemon_owner_all on public.run_chosen_pokemon
 for all using (
   exists (
     select 1 from public.runs r
@@ -158,7 +173,8 @@ with check (
   )
 );
 
-create policy if not exists run_fallen_pokemon_owner_all on public.run_fallen_pokemon
+drop policy if exists run_fallen_pokemon_owner_all on public.run_fallen_pokemon;
+create policy run_fallen_pokemon_owner_all on public.run_fallen_pokemon
 for all using (
   exists (
     select 1 from public.runs r

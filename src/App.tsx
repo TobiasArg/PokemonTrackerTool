@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { MobileTabNav } from './components/layout/MobileTabNav'
@@ -31,7 +31,14 @@ function App() {
     syncStatus,
   } = useRuns()
 
+  const hasBootstrappedRef = useRef(false)
+
   useEffect(() => {
+    if (hasBootstrappedRef.current) {
+      return
+    }
+
+    hasBootstrappedRef.current = true
     void bootstrap()
   }, [bootstrap])
 
