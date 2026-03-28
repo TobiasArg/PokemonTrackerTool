@@ -805,7 +805,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
 
   addFallenPokemon: (payload) => {
     const state = get()
-    if (state.authStatus === 'authenticated' && !state.activeRunId) {
+    if (!state.activeRunId) {
       return 'invalid'
     }
 
@@ -842,7 +842,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
 
   removeFallenPokemon: (id) => {
     const state = get()
-    if (state.authStatus === 'authenticated' && !state.activeRunId) {
+    if (!state.activeRunId) {
       return
     }
 
@@ -854,7 +854,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
 
   addChosenPokemon: (pokemonName) => {
     const state = get()
-    if (state.authStatus === 'authenticated' && !state.activeRunId) {
+    if (!state.activeRunId) {
       return 'limit-reached'
     }
 
@@ -903,7 +903,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
 
   removeChosenPokemon: (id) => {
     const state = get()
-    if (state.authStatus === 'authenticated' && !state.activeRunId) {
+    if (!state.activeRunId) {
       return
     }
 
@@ -915,7 +915,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
 
   trimChosenPokemons: (limit) => {
     const state = get()
-    if (state.authStatus === 'authenticated' && !state.activeRunId) {
+    if (!state.activeRunId) {
       return
     }
 
@@ -935,7 +935,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
 
   toggleZoneProgress: (zoneId, field) => {
     const state = get()
-    if (state.authStatus === 'authenticated' && !state.activeRunId) {
+    if (!state.activeRunId) {
       return
     }
 
@@ -1018,7 +1018,7 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
 
   toggleBadge: (badgeId) => {
     const state = get()
-    if (state.authStatus === 'authenticated' && !state.activeRunId) {
+    if (!state.activeRunId) {
       return
     }
 

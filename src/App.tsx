@@ -84,8 +84,9 @@ function App() {
     location.pathname.startsWith(path),
   )
   const showNav =
-    isTrackerPath &&
-    (authStatus !== 'authenticated' || Boolean(activeRunId))
+    authStatus === 'authenticated' &&
+    Boolean(activeRunId) &&
+    isTrackerPath
 
   return (
     <div className="app-layout">
@@ -99,12 +100,9 @@ function App() {
         <Routes>
           {authStatus !== 'authenticated' ? (
             <>
-              <Route element={<Navigate replace to="/pokemons" />} path="/" />
-              <Route element={<PokemonPage />} path="/pokemons" />
-              <Route element={<RoadmapPage />} path="/roadmap" />
-              <Route element={<BadgesPage />} path="/medallas" />
+              <Route element={<Navigate replace to="/auth" />} path="/" />
               <Route element={<AuthPage />} path="/auth" />
-              <Route element={<Navigate replace to="/" />} path="*" />
+              <Route element={<Navigate replace to="/auth" />} path="*" />
             </>
           ) : (
             <>
