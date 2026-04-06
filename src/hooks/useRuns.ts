@@ -17,6 +17,7 @@ export const useRuns = () => {
       deleteRun: state.deleteRun,
       setActiveRun: state.setActiveRun,
       clearSyncError: state.clearSyncError,
+      retrySync: state.retrySync,
       persistActiveRunSnapshot: state.persistActiveRunSnapshot,
       dataRevision: state.dataRevision,
       lastPersistedRevision: state.lastPersistedRevision,

@@ -4,7 +4,9 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { MobileTabNav } from './components/layout/MobileTabNav'
 import { PageHeader } from './components/layout/PageHeader'
 import { useAuth } from './hooks/useAuth'
+import { useNuzlockeStore } from './hooks/useNuzlockeStore'
 import { useRuns } from './hooks/useRuns'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { AuthPage } from './pages/AuthPage'
 import { BadgesPage } from './pages/BadgesPage'
 import { PokemonPage } from './pages/PokemonPage'
@@ -43,6 +45,27 @@ function App() {
   }, [bootstrap])
 
   useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      return
+    }
+
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        useNuzlockeStore.getState().applySignedOutState()
+        return
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        void useNuzlockeStore.getState().bootstrap()
+      }
+    })
+
+    return () => {
+      data.subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
     if (authStatus !== 'authenticated') {
       return
     }
@@ -59,6 +82,7 @@ function App() {
       return
     }
 
+    // Coalesce writes for normal edits and back off after errors.
     const persistDelay = syncStatus === 'error' ? 2500 : 500
 
     const timeoutId = window.setTimeout(() => {

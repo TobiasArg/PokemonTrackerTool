@@ -13,7 +13,7 @@ SPA mobile-first para trackear runs Nuzlocke de Pokémon Blanco/Negro 2.
 - Proyecto Supabase creado
 
 ## Variables de entorno
-Crea `.env` en raíz usando `.env.example`:
+Crea `.env` en raíz:
 
 ```bash
 VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -21,14 +21,17 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
 ## SQL de base de datos
-Ejecuta el schema en Supabase SQL Editor:
+Ejecuta en orden en Supabase SQL Editor:
 
 - `supabase/schema.sql`
+- `supabase/migrations/20260328_001_hardening.sql`
 
 Incluye:
 - Tablas `runs`, `run_zone_progress`, `run_badges`, `run_chosen_pokemon`, `run_fallen_pokemon`
 - Triggers `updated_at`
-- RLS para owner-only
+- RLS owner-only con policies `to authenticated`
+- Hardening de grants (sin DML para `anon`)
+- Guardrail DB: líderes sin `captured=true`
 
 ## Scripts
 ```bash
@@ -36,6 +39,18 @@ npm install
 npm run dev
 npm run lint
 npm run build
+npm run test:unit
+```
+
+E2E:
+```bash
+npm run test:e2e:install
+E2E_BASE_URL=http://127.0.0.1:5173 \
+E2E_USER_A_EMAIL=... \
+E2E_USER_A_PASSWORD=... \
+E2E_USER_B_EMAIL=... \
+E2E_USER_B_PASSWORD=... \
+npm run test:e2e
 ```
 
 ## Flujo funcional implementado
@@ -58,3 +73,22 @@ npm run build
 - Scope: dueño único por run (sin colaboración multi-editor)
 - Resolución de conflictos: last-write-wins
 - Requiere conexión para persistencia cloud
+
+## Configuración Auth en Supabase (producción)
+1. Auth > Providers: desactiva providers no usados.
+2. Auth > Email: activar confirmación de email (`Confirm email`).
+3. Auth > URL Configuration:
+- `Site URL`: URL de Vercel producción.
+- `Redirect URLs`: incluye `http://localhost:5173/*` y la URL de Vercel `/*`.
+4. Revisar template de email de confirmación.
+
+## Checklist de salida a producción
+1. Ejecutar SQL base + hardening en proyecto Supabase de producción.
+2. Confirmar que usuario A no puede leer/modificar runs de B.
+3. Ejecutar `npm run lint`, `npm run build`, `npm run test:unit`.
+4. Ejecutar E2E core multiusuario con dos cuentas reales.
+5. Smoke manual:
+- Registro con confirmación de email.
+- Login y creación de primera run.
+- Persistencia entre dispositivos del mismo usuario.
+- Refresh/token refresh sin rebote a login.

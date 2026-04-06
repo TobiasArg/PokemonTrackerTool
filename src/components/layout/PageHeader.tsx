@@ -15,7 +15,7 @@ const SYNC_LABELS: Record<string, string> = {
 export const PageHeader = () => {
   const navigate = useNavigate()
   const { signOut } = useAuth()
-  const { runs, activeRunId, syncStatus, syncError } = useRuns()
+  const { runs, activeRunId, syncStatus, syncError, retrySync, lastSyncedAt } = useRuns()
 
   const activeRun = useMemo(() => {
     return runs.find((run) => run.id === activeRunId) ?? null
@@ -26,6 +26,19 @@ export const PageHeader = () => {
     navigate('/auth')
   }
 
+  const formattedLastSyncedAt = useMemo(() => {
+    if (!lastSyncedAt) {
+      return 'Sin sincronización reciente'
+    }
+
+    return new Intl.DateTimeFormat('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+    }).format(new Date(lastSyncedAt))
+  }, [lastSyncedAt])
+
   return (
     <header className="page-header">
       <p className="page-header__eyebrow">Pokémon Blanco y Negro 2</p>
@@ -35,9 +48,15 @@ export const PageHeader = () => {
           ? `Run activa: ${activeRun.name} · ${SYNC_LABELS[syncStatus] ?? syncStatus}`
           : 'Selecciona una run para empezar.'}
       </p>
+      <p className="page-header__description">Último sync: {formattedLastSyncedAt}</p>
       {syncError ? <p className="page-header__sync-error">{syncError}</p> : null}
 
       <div className="page-header__actions">
+        {syncStatus === 'error' ? (
+          <ActionButton onClick={() => void retrySync()} variant="secondary">
+            Reintentar sync
+          </ActionButton>
+        ) : null}
         <ActionButton onClick={() => navigate('/runs')} variant="ghost">
           Mis runs
         </ActionButton>

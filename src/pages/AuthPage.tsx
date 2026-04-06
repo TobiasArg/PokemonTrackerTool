@@ -13,11 +13,13 @@ export const AuthPage = () => {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setLoading(true)
     setError(null)
+    setNotice(null)
 
     if (!isSupabaseConfigured) {
       setError(SUPABASE_CONFIG_ERROR)
@@ -29,7 +31,11 @@ export const AuthPage = () => {
     const result = await action(email, password)
 
     if (!result.ok) {
-      setError(result.error)
+      if (result.error.includes('Cuenta creada')) {
+        setNotice(result.error)
+      } else {
+        setError(result.error)
+      }
       setLoading(false)
       return
     }
@@ -95,7 +101,15 @@ export const AuthPage = () => {
           {!isSupabaseConfigured && !error ? (
             <p className="modal-form__error">{SUPABASE_CONFIG_ERROR}</p>
           ) : null}
+          {notice ? <p className="modal-form__success">{notice}</p> : null}
           {error ? <p className="modal-form__error">{error}</p> : null}
+          <p className="auth-form__hint">
+            Si la sesión se inicia pero falla la carga de runs, entra y usa
+            {' '}
+            <strong>Reintentar sync</strong>
+            {' '}
+            desde el header.
+          </p>
 
           <ActionButton disabled={loading} type="submit" variant="secondary">
             {loading

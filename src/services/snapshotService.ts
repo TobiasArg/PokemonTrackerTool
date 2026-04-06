@@ -16,6 +16,28 @@ type SnapshotPayload = {
   fallenPokemons: FallenPokemonSnapshotItem[]
 }
 
+const LEADER_ZONE_IDS = new Set<string>([
+  'cheren',
+  'hiedra',
+  'camus',
+  'camila',
+  'yakon',
+  'gerania',
+  'lirio',
+  'ciprian',
+])
+
+const BADGE_TO_LEADER_ZONE: Record<string, string> = {
+  'badge-1': 'cheren',
+  'badge-2': 'hiedra',
+  'badge-3': 'camus',
+  'badge-4': 'camila',
+  'badge-5': 'yakon',
+  'badge-6': 'gerania',
+  'badge-7': 'lirio',
+  'badge-8': 'ciprian',
+}
+
 type ZoneProgressRow = {
   zone_id: string
   captured: boolean
@@ -63,6 +85,86 @@ const mapRunRow = (row: RunRow): RunSummary => {
     isArchived: row.is_archived,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  }
+}
+
+export const normalizeSnapshotPayload = (payload: SnapshotPayload): SnapshotPayload => {
+  const zoneProgress: ZoneProgressMap = Object.entries(payload.zoneProgress).reduce(
+    (acc, [zoneId, progress]) => {
+      const completed = Boolean(progress.completed)
+      acc[zoneId] = {
+        captured: LEADER_ZONE_IDS.has(zoneId) ? false : Boolean(progress.captured),
+        completed,
+      }
+
+      return acc
+    },
+    {} as ZoneProgressMap,
+  )
+
+  const badgesById = new Map(
+    payload.badges.map((badge) => [badge.id, Boolean(badge.earned)]),
+  )
+
+  for (const [badgeId, zoneId] of Object.entries(BADGE_TO_LEADER_ZONE)) {
+    const zoneCompleted = Boolean(zoneProgress[zoneId]?.completed)
+    const badgeEarned = badgesById.get(badgeId) ?? false
+    const mergedEarned = zoneCompleted || badgeEarned
+
+    badgesById.set(badgeId, mergedEarned)
+    zoneProgress[zoneId] = {
+      captured: false,
+      completed: mergedEarned,
+    }
+  }
+
+  const badges = Array.from(badgesById.entries()).map(([id, earned]) => ({
+    id,
+    earned,
+  }))
+
+  const fallenPokemons = payload.fallenPokemons.filter((pokemon) => {
+    return Boolean(
+      pokemon.name.trim() &&
+        pokemon.captureZone.trim() &&
+        pokemon.cause.trim() &&
+        Number.isFinite(pokemon.level),
+    )
+  })
+
+  const fallenKeys = new Set(
+    fallenPokemons.map((pokemon) => normalizePokemonKey(pokemon.name)),
+  )
+
+  const capturedZones = Object.entries(zoneProgress).reduce((count, [zoneId, progress]) => {
+    if (LEADER_ZONE_IDS.has(zoneId)) {
+      return count
+    }
+
+    return progress.captured ? count + 1 : count
+  }, 0)
+
+  const chosenDeduped = payload.chosenPokemons.filter((pokemon, index, array) => {
+    const normalizedKey = normalizePokemonKey(pokemon.pokemonName)
+    if (!pokemon.pokemonName.trim() || fallenKeys.has(normalizedKey)) {
+      return false
+    }
+
+    return (
+      array.findIndex(
+        (candidate) =>
+          normalizePokemonKey(candidate.pokemonName) === normalizedKey,
+      ) === index
+    )
+  })
+
+  const chosenPokemons = chosenDeduped.slice(0, capturedZones)
+
+  return {
+    zoneProgress,
+    badges,
+    chosenPokemons,
+    fallenPokemons,
   }
 }
 
@@ -170,7 +272,9 @@ export const snapshotService = {
 
   async saveRunSnapshot(runId: string, payload: SnapshotPayload): Promise<void> {
     const supabase = getSupabaseClient()
-    const zoneRows = Object.entries(payload.zoneProgress).map(([zoneId, progress]) => ({
+    const normalizedPayload = normalizeSnapshotPayload(payload)
+
+    const zoneRows = Object.entries(normalizedPayload.zoneProgress).map(([zoneId, progress]) => ({
       run_id: runId,
       zone_id: zoneId,
       captured: Boolean(progress.captured),
@@ -187,7 +291,7 @@ export const snapshotService = {
       }
     }
 
-    const badgeRows = payload.badges.map((badge) => ({
+    const badgeRows = normalizedPayload.badges.map((badge) => ({
       run_id: runId,
       badge_id: badge.id,
       earned: Boolean(badge.earned),
@@ -203,8 +307,8 @@ export const snapshotService = {
       }
     }
 
-    if (payload.chosenPokemons.length > 0) {
-      const chosenRows = payload.chosenPokemons.map((pokemon) => ({
+    if (normalizedPayload.chosenPokemons.length > 0) {
+      const chosenRows = normalizedPayload.chosenPokemons.map((pokemon) => ({
         id: pokemon.id,
         run_id: runId,
         pokemon_name: pokemon.pokemonName,
@@ -221,7 +325,7 @@ export const snapshotService = {
       }
     }
 
-    const chosenIds = new Set(payload.chosenPokemons.map((pokemon) => pokemon.id))
+    const chosenIds = new Set(normalizedPayload.chosenPokemons.map((pokemon) => pokemon.id))
     const { data: existingChosenRows, error: existingChosenError } = await supabase
       .from('run_chosen_pokemon')
       .select('id')
@@ -247,8 +351,8 @@ export const snapshotService = {
       }
     }
 
-    if (payload.fallenPokemons.length > 0) {
-      const fallenRows = payload.fallenPokemons.map((pokemon) => ({
+    if (normalizedPayload.fallenPokemons.length > 0) {
+      const fallenRows = normalizedPayload.fallenPokemons.map((pokemon) => ({
         id: pokemon.id,
         run_id: runId,
         name: pokemon.name,
@@ -268,7 +372,7 @@ export const snapshotService = {
       }
     }
 
-    const fallenIds = new Set(payload.fallenPokemons.map((pokemon) => pokemon.id))
+    const fallenIds = new Set(normalizedPayload.fallenPokemons.map((pokemon) => pokemon.id))
     const { data: existingFallenRows, error: existingFallenError } = await supabase
       .from('run_fallen_pokemon')
       .select('id')

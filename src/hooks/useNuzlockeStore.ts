@@ -405,10 +405,12 @@ export type NuzlockeStoreState = DomainState & {
   setActiveRun: (runId: string | null) => Promise<void>
   loadActiveRunSnapshot: () => Promise<void>
   persistActiveRunSnapshot: () => Promise<void>
+  retrySync: () => Promise<void>
   migrateLegacyLocalState: () => Promise<void>
   signIn: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>
   signUp: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>
   signOut: () => Promise<void>
+  applySignedOutState: () => void
   clearSyncError: () => void
   addFallenPokemon: (payload: AddFallenPokemonPayload) => AddFallenPokemonResult
   removeFallenPokemon: (id: string) => void
@@ -429,6 +431,45 @@ const toUserSession = (session: Session | null): UserSession | null => {
   return {
     userId: session.user.id,
     email: session.user.email ?? null,
+  }
+}
+
+const createUnauthenticatedState = (
+  syncStatus: SyncStatus,
+  syncError: string | null,
+): Pick<
+  NuzlockeStoreState,
+  | 'fallenPokemons'
+  | 'chosenPokemons'
+  | 'zoneProgress'
+  | 'badges'
+  | 'authStatus'
+  | 'isBootstrapped'
+  | 'session'
+  | 'rawSession'
+  | 'runs'
+  | 'activeRunId'
+  | 'syncStatus'
+  | 'syncError'
+  | 'isHydratingRunData'
+  | 'dataRevision'
+  | 'lastPersistedRevision'
+  | 'lastSyncedAt'
+> => {
+  return {
+    ...createInitialDomainState(),
+    authStatus: 'unauthenticated',
+    isBootstrapped: true,
+    session: null,
+    rawSession: null,
+    runs: [],
+    activeRunId: null,
+    syncStatus,
+    syncError,
+    isHydratingRunData: false,
+    dataRevision: 0,
+    lastPersistedRevision: 0,
+    lastSyncedAt: null,
   }
 }
 
@@ -457,38 +498,12 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
       userSession = toUserSession(session)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo validar la sesión.'
-      set({
-        ...createInitialDomainState(),
-        authStatus: 'unauthenticated',
-        isBootstrapped: true,
-        session: null,
-        rawSession: null,
-        runs: [],
-        activeRunId: null,
-        syncStatus: 'error',
-        syncError: message,
-        isHydratingRunData: false,
-        dataRevision: 0,
-        lastPersistedRevision: 0,
-      })
+      set(createUnauthenticatedState('error', message))
       return
     }
 
     if (!session || !userSession) {
-      set({
-        ...createInitialDomainState(),
-        authStatus: 'unauthenticated',
-        isBootstrapped: true,
-        session: null,
-        rawSession: null,
-        runs: [],
-        activeRunId: null,
-        syncStatus: 'idle',
-        syncError: null,
-        isHydratingRunData: false,
-        dataRevision: 0,
-        lastPersistedRevision: 0,
-      })
+      set(createUnauthenticatedState('idle', null))
       return
     }
 
@@ -741,6 +756,44 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
     }
   },
 
+  retrySync: async () => {
+    const state = get()
+
+    if (state.authStatus !== 'authenticated') {
+      return
+    }
+
+    set({ syncError: null })
+
+    if (state.activeRunId) {
+      if (state.dataRevision > state.lastPersistedRevision) {
+        await get().persistActiveRunSnapshot()
+        return
+      }
+
+      await get().loadActiveRunSnapshot()
+      return
+    }
+
+    await get().loadRuns()
+
+    const nextRuns = get().runs
+    if (!nextRuns.length) {
+      const created = await get().createRun('Mi primera run')
+      if (!created) {
+        return
+      }
+
+      await get().setActiveRun(created.id)
+      return
+    }
+
+    const userId = get().session?.userId
+    const preferredRunId = userId ? getStoredActiveRunId(userId) : null
+    const chosenRun = nextRuns.find((run) => run.id === preferredRunId) ?? nextRuns[0]
+    await get().setActiveRun(chosenRun.id)
+  },
+
   migrateLegacyLocalState: async () => {
     const state = get()
     if (!state.rawSession || !state.session) {
@@ -858,20 +911,16 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
   signOut: async () => {
     await authService.signOut()
 
-    set({
-      ...createInitialDomainState(),
-      authStatus: 'unauthenticated',
-      session: null,
-      rawSession: null,
-      runs: [],
-      activeRunId: null,
-      syncStatus: 'idle',
-      syncError: null,
-      isHydratingRunData: false,
-      dataRevision: 0,
-      lastPersistedRevision: 0,
-      isBootstrapped: true,
-    })
+    get().applySignedOutState()
+  },
+
+  applySignedOutState: () => {
+    const state = get()
+    if (state.session) {
+      storeActiveRunId(state.session.userId, null)
+    }
+
+    set(createUnauthenticatedState('idle', null))
   },
 
   clearSyncError: () => {
