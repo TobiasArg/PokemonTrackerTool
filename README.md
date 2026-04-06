@@ -53,6 +53,11 @@ E2E_USER_B_PASSWORD=... \
 npm run test:e2e
 ```
 
+Gate estricto (falla si faltan credenciales E2E):
+```bash
+npm run test:e2e:required
+```
+
 ## Flujo funcional implementado
 - Login/registro
 - Gestión de runs (crear, renombrar, archivar, eliminar)
@@ -86,7 +91,7 @@ npm run test:e2e
 1. Ejecutar SQL base + hardening en proyecto Supabase de producción.
 2. Confirmar que usuario A no puede leer/modificar runs de B.
 3. Ejecutar `npm run lint`, `npm run build`, `npm run test:unit`.
-4. Ejecutar E2E core multiusuario con dos cuentas reales.
+4. Ejecutar E2E core multiusuario con dos cuentas reales (`npm run test:e2e:required`).
 5. Smoke manual:
 - Registro con confirmación de email.
 - Login y creación de primera run.

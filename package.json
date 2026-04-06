@@ -12,12 +12,12 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:required": "node scripts/require-e2e-env.mjs && playwright test",
     "test:e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",
     "clsx": "^2.1.1",
-    "nanoid": "^5.1.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.3",

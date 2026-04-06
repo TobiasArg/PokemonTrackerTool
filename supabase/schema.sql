@@ -96,35 +96,41 @@ alter table public.run_badges enable row level security;
 alter table public.run_chosen_pokemon enable row level security;
 alter table public.run_fallen_pokemon enable row level security;
 
--- Grants (requeridos para que RLS pueda evaluar permisos de acceso desde el cliente)
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on table public.runs to anon, authenticated;
-grant select, insert, update, delete on table public.run_zone_progress to anon, authenticated;
-grant select, insert, update, delete on table public.run_badges to anon, authenticated;
-grant select, insert, update, delete on table public.run_chosen_pokemon to anon, authenticated;
-grant select, insert, update, delete on table public.run_fallen_pokemon to anon, authenticated;
+-- Grants base (owner-authenticated only)
+revoke all on table public.runs from anon;
+revoke all on table public.run_zone_progress from anon;
+revoke all on table public.run_badges from anon;
+revoke all on table public.run_chosen_pokemon from anon;
+revoke all on table public.run_fallen_pokemon from anon;
+
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.runs to authenticated;
+grant select, insert, update, delete on table public.run_zone_progress to authenticated;
+grant select, insert, update, delete on table public.run_badges to authenticated;
+grant select, insert, update, delete on table public.run_chosen_pokemon to authenticated;
+grant select, insert, update, delete on table public.run_fallen_pokemon to authenticated;
 
 -- Runs: owner only
 drop policy if exists runs_owner_select on public.runs;
 create policy runs_owner_select on public.runs
-for select using (owner_id = auth.uid());
+for select to authenticated using (owner_id = auth.uid());
 
 drop policy if exists runs_owner_insert on public.runs;
 create policy runs_owner_insert on public.runs
-for insert with check (owner_id = auth.uid());
+for insert to authenticated with check (owner_id = auth.uid());
 
 drop policy if exists runs_owner_update on public.runs;
 create policy runs_owner_update on public.runs
-for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+for update to authenticated using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
 drop policy if exists runs_owner_delete on public.runs;
 create policy runs_owner_delete on public.runs
-for delete using (owner_id = auth.uid());
+for delete to authenticated using (owner_id = auth.uid());
 
 -- Child tables: access only if run belongs to user
 drop policy if exists run_zone_progress_owner_all on public.run_zone_progress;
 create policy run_zone_progress_owner_all on public.run_zone_progress
-for all using (
+for all to authenticated using (
   exists (
     select 1 from public.runs r
     where r.id = run_zone_progress.run_id
@@ -141,7 +147,7 @@ with check (
 
 drop policy if exists run_badges_owner_all on public.run_badges;
 create policy run_badges_owner_all on public.run_badges
-for all using (
+for all to authenticated using (
   exists (
     select 1 from public.runs r
     where r.id = run_badges.run_id
@@ -158,7 +164,7 @@ with check (
 
 drop policy if exists run_chosen_pokemon_owner_all on public.run_chosen_pokemon;
 create policy run_chosen_pokemon_owner_all on public.run_chosen_pokemon
-for all using (
+for all to authenticated using (
   exists (
     select 1 from public.runs r
     where r.id = run_chosen_pokemon.run_id
@@ -175,7 +181,7 @@ with check (
 
 drop policy if exists run_fallen_pokemon_owner_all on public.run_fallen_pokemon;
 create policy run_fallen_pokemon_owner_all on public.run_fallen_pokemon
-for all using (
+for all to authenticated using (
   exists (
     select 1 from public.runs r
     where r.id = run_fallen_pokemon.run_id

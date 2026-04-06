@@ -410,6 +410,7 @@ export type NuzlockeStoreState = DomainState & {
   signIn: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>
   signUp: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>
   signOut: () => Promise<void>
+  applyAuthSession: (session: Session | null) => void
   applySignedOutState: () => void
   clearSyncError: () => void
   addFallenPokemon: (payload: AddFallenPokemonPayload) => AddFallenPokemonResult
@@ -763,35 +764,40 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
       return
     }
 
-    set({ syncError: null })
+    set({ syncStatus: 'loading', syncError: null })
 
-    if (state.activeRunId) {
-      if (state.dataRevision > state.lastPersistedRevision) {
-        await get().persistActiveRunSnapshot()
+    try {
+      if (state.activeRunId) {
+        if (state.dataRevision > state.lastPersistedRevision) {
+          await get().persistActiveRunSnapshot()
+          return
+        }
+
+        await get().loadActiveRunSnapshot()
         return
       }
 
-      await get().loadActiveRunSnapshot()
-      return
-    }
+      await get().loadRuns()
 
-    await get().loadRuns()
+      const nextRuns = get().runs
+      if (!nextRuns.length) {
+        const created = await get().createRun('Mi primera run')
+        if (!created) {
+          throw new Error('No se pudo crear una run para recuperar la sesión.')
+        }
 
-    const nextRuns = get().runs
-    if (!nextRuns.length) {
-      const created = await get().createRun('Mi primera run')
-      if (!created) {
+        await get().setActiveRun(created.id)
         return
       }
 
-      await get().setActiveRun(created.id)
-      return
+      const userId = get().session?.userId
+      const preferredRunId = userId ? getStoredActiveRunId(userId) : null
+      const chosenRun = nextRuns.find((run) => run.id === preferredRunId) ?? nextRuns[0]
+      await get().setActiveRun(chosenRun.id)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo reintentar el sync.'
+      set({ syncStatus: 'error', syncError: message })
     }
-
-    const userId = get().session?.userId
-    const preferredRunId = userId ? getStoredActiveRunId(userId) : null
-    const chosenRun = nextRuns.find((run) => run.id === preferredRunId) ?? nextRuns[0]
-    await get().setActiveRun(chosenRun.id)
   },
 
   migrateLegacyLocalState: async () => {
@@ -912,6 +918,20 @@ export const useNuzlockeStore = create<NuzlockeStoreState>()((set, get) => ({
     await authService.signOut()
 
     get().applySignedOutState()
+  },
+
+  applyAuthSession: (session) => {
+    const nextUserSession = toUserSession(session)
+    if (!session || !nextUserSession) {
+      get().applySignedOutState()
+      return
+    }
+
+    set({
+      rawSession: session,
+      session: nextUserSession,
+      authStatus: 'authenticated',
+    })
   },
 
   applySignedOutState: () => {

@@ -49,14 +49,21 @@ function App() {
       return
     }
 
-    const { data } = supabase.auth.onAuthStateChange((event) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const store = useNuzlockeStore.getState()
+
       if (event === 'SIGNED_OUT') {
-        useNuzlockeStore.getState().applySignedOutState()
+        store.applySignedOutState()
         return
       }
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        void useNuzlockeStore.getState().bootstrap()
+      if (event === 'SIGNED_IN') {
+        void store.bootstrap()
+        return
+      }
+
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        store.applyAuthSession(session)
       }
     })
 
